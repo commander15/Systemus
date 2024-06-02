@@ -1,0 +1,257 @@
+{
+    "system": {
+        "name": "TMS",
+        "version": "1.0.0"
+    },
+    "users": [
+        {
+            "login": "admin",
+            "password": "admin",
+            "active": true,
+            "profile": {
+                "name": "Administrator"
+            },
+            "role": "Administrator",
+            "groups": [ "Administrators" ]
+        },
+        {
+            "login": "chief",
+            "password": "chief",
+            "active": true,
+            "profile": {
+                "name": ""
+            },
+            "role": "Chief",
+            "groups": [ "Administrators" ],
+            "privileges": [],
+            "permissions": []
+        }
+    ],
+    "roles": [
+        {
+            "name": "Super Administrator",
+            "description": "",
+            "privileges": [ "users.management" ]
+        },
+        {
+            "name": "Administrator",
+            "description": ""
+        },
+        {
+            "name": "Chief",
+            "description": ""
+        },
+        {
+            "name": "Hostess",
+            "description": ""
+        },
+        {
+            "name": "Comptable",
+            "description": ""
+        },
+        {
+            "name": "",
+            "description": ""
+        }
+    ],
+    "groups": [
+        {
+            "name": "Administrators",
+            "description": "",
+            "privileges": [ "users.control" ],
+            "permissions": [ "user.list", "user.read" ]
+        }
+    ],
+    "privileges": [
+        {
+            "name": "users.management",
+            "description": "",
+            "permissions": [ "user.list", "user.create", "user.read", "user.update", "user.delete" ]
+        },
+        {
+            "name": "users.control",
+            "description": "",
+            "permissions": [ "user.enable", "user.disable" ]
+        },
+        {
+            "name": "destinations.management",
+            "description": "",
+            "permissions": [ "destination.list", "destination.create", "destination.read", "destination.update", "destination.delete" ]
+        },
+        {
+            "name": "vehicles.management",
+            "description": "",
+            "permissions": [ "vehicle.list", "vehicle.create", "vehicle.read", "vehicle.update", "vehicle.delete" ]
+        },
+        {
+            "name": "travels.management",
+            "description": "",
+            "permissions": [ "travel.list", "travel.create", "travel.read", "travel.update", "travel.delete" ]
+        },
+        {
+            "name": "customers.management",
+            "description": "",
+            "permissions": [ "customer.list", "customer.create", "customer.read", "customer.update", "customer.delete" ]
+        },
+        {
+            "name": "reservations.management",
+            "description": "",
+            "permissions": [ "reservation.list", "reservation.create", "reservation.read", "reservation.update", "reservation.delete" ]
+        },
+        {
+            "name": "luggages.management",
+            "description": "",
+            "permissions": [ "luggage.list", "luggage.create", "luggage.read", "luggage.update", "luggage.delete" ]
+        }
+    ],
+    "permissions": [
+        {
+            "name": "user.list",
+            "description": ""
+        },
+        {
+            "name": "user.create",
+            "description": ""
+        },
+        {
+            "name": "user.read",
+            "description": ""
+        },
+        {
+            "name": "user.update",
+            "description": ""
+        },
+        {
+            "name": "user.delete",
+            "description": ""
+        },
+        {
+            "name": "user.enable",
+            "description": ""
+        },
+        {
+            "name": "user.disable",
+            "description": ""
+        },
+        {
+            "name": "destination.list",
+            "description": ""
+        },
+        {
+            "name": "destination.create",
+            "description": ""
+        },
+        {
+            "name": "destination.read",
+            "description": ""
+        },
+        {
+            "name": "destination.update",
+            "description": ""
+        },
+        {
+            "name": "destination.delete",
+            "description": ""
+        },
+        {
+            "name": "vehicle.list",
+            "description": ""
+        },
+        {
+            "name": "vehicle.create",
+            "description": ""
+        },
+        {
+            "name": "vehicle.read",
+            "description": ""
+        },
+        {
+            "name": "vehicle.update",
+            "description": ""
+        },
+        {
+            "name": "vehicle.delete",
+            "description": ""
+        },
+        {
+            "name": "travel.list",
+            "description": ""
+        },
+        {
+            "name": "travel.create",
+            "description": ""
+        },
+        {
+            "name": "travel.read",
+            "description": ""
+        },
+        {
+            "name": "travel.update",
+            "description": ""
+        },
+        {
+            "name": "travel.delete",
+            "description": ""
+        },
+        {
+            "name": "customer.list",
+            "description": ""
+        },
+        {
+            "name": "customer.create",
+            "description": ""
+        },
+        {
+            "name": "customer.read",
+            "description": ""
+        },
+        {
+            "name": "customer.update",
+            "description": ""
+        },
+        {
+            "name": "customer.delete",
+            "description": ""
+        },
+        {
+            "name": "reservation.list",
+            "description": ""
+        },
+        {
+            "name": "reservation.create",
+            "description": ""
+        },
+        {
+            "name": "reservation.read",
+            "description": ""
+        },
+        {
+            "name": "reservation.update",
+            "description": ""
+        },
+        {
+            "name": "reservation.delete",
+            "description": ""
+        },
+        {
+            "name": "luggage.list",
+            "description": ""
+        },
+        {
+            "name": "luggage.create",
+            "description": ""
+        },
+        {
+            "name": "luggage.read",
+            "description": ""
+        },
+        {
+            "name": "luggage.update",
+            "description": ""
+        },
+        {
+            "name": "luggage.delete",
+            "description": ""
+        }
+    ]
+}
