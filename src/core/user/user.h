@@ -1,19 +1,22 @@
 #include <SystemusCore/global.h>
+#include <SystemusCore/data.h>
 #include <SystemusCore/profile.h>
 #include <SystemusCore/role.h>
 #include <SystemusCore/group.h>
 #include <SystemusCore/privilege.h>
 #include <SystemusCore/permission.h>
 
+namespace Systemus {
+
 class UserPrivate;
-class SYSTEMUS_CORE_EXPORT User : public Systemus::Data
+class SYSTEMUS_CORE_EXPORT User : public Data
 {
     SYSTEMUS_DATA(Users)
     SYSTEMUS_PROPERTY(QString, login)
     SYSTEMUS_PROPERTY(QString, password)
     SYSTEMUS_PROPERTY(bool, active)
-    SYSTEMUS_FOREIGN(profile_id)
-    SYSTEMUS_FOREIGN(role_id)
+    SYSTEMUS_FOREIGN(Profile, profile, profile_id)
+    SYSTEMUS_FOREIGN(Role, role, role_id)
     
 public:
     User();
@@ -40,6 +43,7 @@ public:
     Profile profile() const;
     void setProfile(const Profile &profile);
     
+    bool hasRole(const QString &role) const;
     QString roleName() const;
     Role role() const;
     void setRole(const Role &role);
@@ -62,3 +66,5 @@ public:
     bool update() override;
     bool deleteData() override;
 };
+
+}
