@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+include(${CMAKE_CURRENT_LIST_DIR}/SystemusMacros.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/SystemusCoreTargets.cmake)
+
+if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/SystemusWidgetsTargets.cmake)
+    include(${CMAKE_CURRENT_LIST_DIR}/SystemusWidgetsTargets.cmake)
+endif()

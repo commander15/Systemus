@@ -1,27 +1,35 @@
+#ifndef SYSTEMUS_AUTHENTICATOR_H
+#define SYSTEMUS_AUTHENTICATOR_H
+
 #include <SystemusCore/global.h>
-#include <SystemusCore/user.h>
+
+#include <QtCore/qobject.h>
+#include <QtCore/qcoreapplication.h>
 
 namespace Systemus {
 
+class User;
+
 class SYSTEMUS_CORE_EXPORT AuthenticationError
 {
+    Q_DECLARE_TR_FUNCTIONS(Authenticator)
+
 public:
-    enum Error {
+    enum ErrorType {
+        NoError,
         BadCredentials,
-        UserDisabled,
+        UserNotFound,
+        DisabledAccount,
         UnknownError
     };
-    
-    AuthenticationError(Error error);
-    AuthenticationError(const AuthenticationError &other);
-    
-    AuthenticationError &operator=(const AuthenticationError &other);
-    
-    Error error() const;
+
+    AuthenticationError(ErrorType error = NoError);
+
+    ErrorType error() const;
     QString errorString() const;
-    
+
 private:
-    Error m_error;
+    ErrorType _error;
 };
 
 class AuthenticatorPrivate;
@@ -31,26 +39,25 @@ class SYSTEMUS_CORE_EXPORT Authenticator : public QObject
 
 public:
     ~Authenticator();
-    
+
+    bool isLoggedIn() const;
     User loggedUser() const;
-    Q_SIGNAL void loggedUserChanged(const User &user);
-    
-    bool logIn(const QString &login, const QString &password);
-    void logOut();
-    Q_SIGNAL void loggedIn();
+    Q_SLOT void logIn(const QString &name, const QString &password);
+    Q_SLOT void logOut();
+    Q_SIGNAL void loggedIn(const User &user);
     Q_SIGNAL void loggedOut();
     Q_SIGNAL void logInError(const AuthenticationError &error);
-    
-    AuthenticationError lastError() const;
-    
-    static Authenticator *instance();
-    
-private:
-    QScopedPointer<AuthenticatorPrivate> d;
 
-    static QScopedPointer<Authenticator> m_instance;
-    
-    friend class System;
+    static Authenticator *instance();
+
+private:
+    Authenticator();
+
+    QScopedPointer<AuthenticatorPrivate> d_ptr;
+
+    static QScopedPointer<Authenticator> _instance;
 };
 
 }
+
+#endif // SYSTEMUS_AUTHENTICATOR_H

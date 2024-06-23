@@ -1,0 +1,15 @@
+<RCC>
+  <qresource prefix="/systemus">
+    <file>icons/action_add.png</file>
+    <file>icons/action_delete.png</file>
+    <file>icons/action_edit.png</file>
+    <file>icons/database_host.png</file>
+    <file>icons/filter_icon.png</file>
+    <file>icons/database_name.png</file>
+    <file>icons/login_icon.png</file>
+    <file>icons/login_id.png</file>
+    <file>icons/login_password.png</file>
+    <file>icons/login_icon.png</file>
+    <file>icons/login_settings.png</file>
+  </qresource>
+</RCC>

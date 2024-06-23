@@ -1,32 +1,22 @@
-#define SYSTEMUS_UPPERCASE_a A
-#define SYSTEMUS_UPPERCASE_b B
-#define SYSTEMUS_UPPERCASE_c C
-#define SYSTEMUS_UPPERCASE_d D
-#define SYSTEMUS_UPPERCASE_e E
-#define SYSTEMUS_UPPERCASE_f F
-#define SYSTEMUS_UPPERCASE_g G
-#define SYSTEMUS_UPPERCASE_h H
-#define SYSTEMUS_UPPERCASE_i I
-#define SYSTEMUS_UPPERCASE_j J
-#define SYSTEMUS_UPPERCASE_k K
-#define SYSTEMUS_UPPERCASE_l L
-#define SYSTEMUS_UPPERCASE_m M
-#define SYSTEMUS_UPPERCASE_n N
-#define SYSTEMUS_UPPERCASE_o O
-#define SYSTEMUS_UPPERCASE_p P
-#define SYSTEMUS_UPPERCASE_q Q
-#define SYSTEMUS_UPPERCASE_r R
-#define SYSTEMUS_UPPERCASE_s S
-#define SYSTEMUS_UPPERCASE_t T
-#define SYSTEMUS_UPPERCASE_u U
-#define SYSTEMUS_UPPERCASE_v V
-#define SYSTEMUS_UPPERCASE_w W
-#define SYSTEMUS_UPPERCASE_x X
-#define SYSTEMUS_UPPERCASE_y Y
-#define SYSTEMUS_UPPERCASE_z Z
+#ifndef SYSTEMUS_CORE_GLOBAL_H
+#define SYSTEMUS_CORE_GLOBAL_H
 
-#define SYSTEMUS_CONCATENATE_DETAIL(x, y) x##y
-#define SYSTEMUS_CONCATENATE(x, y) SYSTEMUS_CONCATENATE_DETAIL(x, y)
+#include <SystemusCore/config.h>
 
-#define SYSTEMUS_CAPITALIZE_FIRST_LETTER(name) SYSTEMUS_CONCATENATE(SYSTEMUS_UPPERCASE_, name)
+#ifdef SYSTEMUS_SHARED
+#   ifdef SYSTEMUS_CORE_BUILD
+#       define SYSTEMUS_CORE_EXPORT Q_DECL_EXPORT
+#   else
+#       define SYSTEMUS_CORE_EXPORT Q_DECL_IMPORT
+#   endif
+#else
+#   define SYSTEMUS_CORE_EXPORT
+#endif
 
+#define S_DECLARE_PRIVATE(Class) friend class Class##Private;
+#define S_DECLARE_PUBLIC(Class) friend class Class;
+
+#define S_D(Class) Class##Private *d = static_cast<Class##Private *>(d_ptr.get());
+#define S_Q(Class) Class *q = static_cast<Class *>(q_ptr);
+
+#endif // SYSTEMUS_CORE_GLOBAL_H

@@ -1,4 +1,21 @@
 #include <QtCore/qcoreapplication.h>
+#include <QtCore/qtextstream.h>
+#include <QtCore/qcommandlineparser.h>
+#include <QtCore/qcommandlineoption.h>
+
+#include <QtSql/qsqldatabase.h>
+#include <QtSql/qsqlerror.h>
+
+#include <QMetaProperty>
+
+#include <SystemusCore/user.h>
+#include <SystemusCore/role.h>
+#include <SystemusCore/privilege.h>
+#include <SystemusCore/permission.h>
+
+#include "system.h"
+
+#define ERROR_DB_CONNECTION 1
 
 bool initDatabase();
 bool updateDatabase();
@@ -19,48 +36,71 @@ QList<QJsonObject> readJsonObjects(const QString &fileName);
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    app.setApplicationVersion("1.0.0");
+
+    QTextStream out(stdout), err(stderr);
     
-    QCommandlineParser parser;
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Systemus commandline tool");
     parser.addHelpOption();
     parser.addVersionOption();
     
-    QCommandlineOption hostOption, portOption;
+    QCommandLineOption hostOption("host", "Databse host", "host", "127.0.0.1"), portOption("port", "Database host port", "port", "3306");
     parser.addOptions({hostOption, portOption});
     
-    QCommandlineOption userOption, passwordOption;
+    QCommandLineOption userOption("user", "Database user", "user", "root"), passwordOption("password", "Database password", "password");
     parser.addOptions({userOption, passwordOption});
     
-    QCommandlineOption databaseOption;
+    QCommandLineOption databaseOption("database", "Database name", "database", "Systemus");
     parser.addOption(databaseOption);
     
-    QCommandlineOption systemOption;
-    parser.addOption(databaseOption);
+    QCommandLineOption systemOption("system", "Load system configuration from <file>", "file");
+    parser.addOption(systemOption);
     
-    QCommandlineOption usersOption;
+    /*QCommandLineOption usersOption;
     parser.addOption(usersOption);
     
-    QCommandlineOption rolesOption;
+    QCommandLineOption rolesOption;
     parser.addOption(rolesOption);
     
-    QCommandlineOption groupsOption;
+    QCommandLineOption groupsOption;
     parser.addOption(groupsOption);
     
-    QCommandlineOption privilegesOption;
+    QCommandLineOption privilegesOption;
     parser.addOption(privilegesOption);
     
-    QCommandlineOption permissionsOption;
-    parser.addOption(permissionsOption);
+    QCommandLineOption permissionsOption;
+    parser.addOption(permissionsOption);*/
     
     parser.process(app);
+
+    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+    db.setDatabaseName(parser.value(databaseOption));
+    db.setHostName(parser.value(hostOption));
+    db.setPort(parser.value(portOption).toInt());
+    db.setUserName(parser.value(userOption));
+    db.setPassword(parser.value(passwordOption));
+    if (!db.open()) {
+        err << db.lastError().databaseText() << Qt::endl;
+        return ERROR_DB_CONNECTION;
+    }
     
     const QString mode = (parser.positionalArguments().isEmpty() ? "" : parser.positionalArguments().constFirst());
     bool fillData = true;
     
     if (mode.isEmpty()) {
+        Systemus::User user;
+        user.get(1);
+        user.dumpInfos();
+
+        if (user.hasPermission("destinations.list"))
+            out << "Access granted !" << Qt::endl;
+        else
+            out << "Accesss Denied !" << Qt::endl;
     } else if (mode == "install") {
     } else if (mode == "update") {
     } else if (mode == "fill") {
-    ] else if (mode == "generate") {
+    } else if (mode == "generate") {
         fillData = false;
     } else if (mode == "uninstall") {
         fillData = false;
@@ -69,7 +109,6 @@ int main(int argc, char *argv[])
     }
     
     if (fillData) {
-        QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
     }
     
     return 0;

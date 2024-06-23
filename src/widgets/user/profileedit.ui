@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Systemus::ProfileEdit</class>
+ <widget class="QWidget" name="Systemus::ProfileEdit">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>348</width>
+    <height>199</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Profile</string>
+  </property>
+  <layout class="QFormLayout" name="formLayout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="nameLabel">
+     <property name="text">
+      <string>Name:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLineEdit" name="nameInput"/>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="firstNameLabel">
+     <property name="text">
+      <string>First Name:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QLineEdit" name="firstNameInput"/>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="sexLabel">
+     <property name="text">
+      <string>Sex:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QComboBox" name="sexInput">
+     <property name="currentIndex">
+      <number>2</number>
+     </property>
+     <item>
+      <property name="text">
+       <string>Male</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Female</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>&lt;Unspecified&gt;</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="birthdateLabel">
+     <property name="text">
+      <string>Birthdate</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="phoneLabel">
+     <property name="text">
+      <string>Phone:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QLineEdit" name="phoneInput"/>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="emailLabel">
+     <property name="text">
+      <string>Email:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QLineEdit" name="emailInput"/>
+   </item>
+   <item row="3" column="1">
+    <widget class="QDateEdit" name="birthdateInput"/>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

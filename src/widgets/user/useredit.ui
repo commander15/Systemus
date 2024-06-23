@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Systemus::UserEdit</class>
+ <widget class="QWidget" name="Systemus::UserEdit">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>789</width>
+    <height>552</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>User</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <widget class="QScrollArea" name="scrollArea">
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="scrollAreaWidgetContents">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>771</width>
+        <height>534</height>
+       </rect>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item row="2" column="1">
+        <widget class="QGroupBox" name="groupBox_3">
+         <property name="title">
+          <string>Permissions</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="1" column="1">
+           <widget class="QToolButton" name="toolButton_5">
+            <property name="icon">
+             <iconset resource="../resources/systemus_widgets_res.qrc">
+              <normaloff>:/systemus/icons/action_delete.png</normaloff>:/systemus/icons/action_delete.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QToolButton" name="toolButton_6">
+            <property name="icon">
+             <iconset resource="../resources/systemus_widgets_res.qrc">
+              <normaloff>:/systemus/icons/action_add.png</normaloff>:/systemus/icons/action_add.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <spacer name="verticalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="0" column="0" rowspan="3">
+           <widget class="QListView" name="listView_3"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QGroupBox" name="groupBox_2">
+         <property name="title">
+          <string>Privileges</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_2">
+          <item row="1" column="1">
+           <widget class="QToolButton" name="toolButton_3">
+            <property name="icon">
+             <iconset resource="../resources/systemus_widgets_res.qrc">
+              <normaloff>:/systemus/icons/action_delete.png</normaloff>:/systemus/icons/action_delete.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QToolButton" name="toolButton_4">
+            <property name="icon">
+             <iconset resource="../resources/systemus_widgets_res.qrc">
+              <normaloff>:/systemus/icons/action_add.png</normaloff>:/systemus/icons/action_add.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <spacer name="verticalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="0" column="0" rowspan="3">
+           <widget class="QListView" name="listView_2"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>Groups</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout">
+          <item row="1" column="1">
+           <widget class="QToolButton" name="toolButton_2">
+            <property name="icon">
+             <iconset resource="../resources/systemus_widgets_res.qrc">
+              <normaloff>:/systemus/icons/action_delete.png</normaloff>:/systemus/icons/action_delete.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QToolButton" name="toolButton">
+            <property name="icon">
+             <iconset resource="../resources/systemus_widgets_res.qrc">
+              <normaloff>:/systemus/icons/action_add.png</normaloff>:/systemus/icons/action_add.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <spacer name="verticalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="0" column="0" rowspan="3">
+           <widget class="QListView" name="listView"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QGroupBox" name="formGroupBox">
+         <property name="title">
+          <string>Informations</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="Systemus::ProfileEdit" name="profileEdit" native="true">
+            <layout class="QFormLayout" name="formLayout_2">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="nameInput"/>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="firstNameLabel">
+               <property name="text">
+                <string>First Name:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLineEdit" name="firstNameInput"/>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="sexLabel">
+               <property name="text">
+                <string>Sex:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QComboBox" name="sexInput">
+               <property name="currentIndex">
+                <number>2</number>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Male</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Female</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>&lt;Unspecified&gt;</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="birthdateLabel">
+               <property name="text">
+                <string>Birthdate</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDateEdit" name="birthdateInput"/>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="phoneLabel">
+               <property name="text">
+                <string>Phone:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLineEdit" name="phoneInput"/>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="emailLabel">
+               <property name="text">
+                <string>Email:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QLineEdit" name="emailInput"/>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="nameLabel">
+               <property name="text">
+                <string>Name:</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="Line" name="line">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QFormLayout" name="formLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="loginLabel">
+              <property name="text">
+               <string>Login:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QLineEdit" name="loginInput"/>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="passwordLabel">
+              <property name="text">
+               <string>Password:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QLineEdit" name="passwordInput"/>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="activeLabel">
+              <property name="text">
+               <string>Active:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <layout class="QHBoxLayout" name="horizontalLayout">
+              <item>
+               <widget class="QRadioButton" name="radioButton">
+                <property name="text">
+                 <string>Yes</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QRadioButton" name="radioButton_2">
+                <property name="text">
+                 <string>No</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="roleLabel">
+              <property name="text">
+               <string>Role:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QComboBox" name="roleInput"/>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="sinceLabel">
+              <property name="text">
+               <string>Since:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QDateTimeEdit" name="sinceOutput">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="loggedLabel">
+              <property name="text">
+               <string>Logged</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QDateTimeEdit" name="loggedTimeOutput"/>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Systemus::ProfileEdit</class>
+   <extends>QWidget</extends>
+   <header location="global">SystemusWidgets/profileedit.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../resources/systemus_widgets_res.qrc"/>
+ </resources>
+ <connections/>
+</ui>

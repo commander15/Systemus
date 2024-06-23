@@ -16,8 +16,9 @@ CREATE TABLE IF NOT EXISTS SystemInstallations (
 
 CREATE TABLE IF NOT EXISTS Users (
     id            INTEGER     PRIMARY KEY AUTO_INCREMENT,
-    login         VARCHAR(30) UNIQUE NOT NULL,
-    password      VARCHAR(60) NOT NULL,
+    name          VARCHAR(30) UNIQUE NOT NULL,
+    description   VARCHAR(255),
+    password      VARCHAR(255) NOT NULL,
     active        BOOLEAN     DEFAULT TRUE,
     logged_date   DATE,
     logged_time   TIME,

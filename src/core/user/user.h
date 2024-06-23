@@ -1,70 +1,53 @@
+#ifndef SYSTEMUS_USER_H
+#define SYSTEMUS_USER_H
+
 #include <SystemusCore/global.h>
-#include <SystemusCore/data.h>
-#include <SystemusCore/profile.h>
-#include <SystemusCore/role.h>
-#include <SystemusCore/group.h>
 #include <SystemusCore/privilege.h>
-#include <SystemusCore/permission.h>
 
 namespace Systemus {
 
-class UserPrivate;
-class SYSTEMUS_CORE_EXPORT User : public Data
+class Role;
+
+class SYSTEMUS_CORE_EXPORT UserProfile : public Data
 {
-    SYSTEMUS_DATA(Users)
-    SYSTEMUS_PROPERTY(QString, login)
-    SYSTEMUS_PROPERTY(QString, password)
-    SYSTEMUS_PROPERTY(bool, active)
-    SYSTEMUS_FOREIGN(Profile, profile, profile_id)
-    SYSTEMUS_FOREIGN(Role, role, role_id)
-    
+    Q_GADGET
+    Q_PROPERTY(QString name READ name WRITE setName USER true)
+    Q_CLASSINFO("table", "Profiles")
+
 public:
-    User();
-    ~User();
-    
+    UserProfile();
+    UserProfile(const UserProfile &other);
+
     QString name() const;
     void setName(const QString &name);
-    
-    QString firstName() const;
-    void setFirstName(const QString &name);
-    
-    Profile::Sex sex() const;
-    void setSex(Profile::Sex sex);
-    
-    QDate birthdate() const;
-    void setBirthdate(const QDate &date);
-    
-    QString phone() const;
-    void setPhone(const QString &phone);
-    
-    QString email() const;
-    void setEmail(const QString &email);
-    
-    Profile profile() const;
-    void setProfile(const Profile &profile);
-    
-    bool hasRole(const QString &role) const;
-    QString roleName() const;
+};
+
+class SYSTEMUS_CORE_EXPORT User : public PrivilegedData
+{
+    Q_GADGET
+    Q_PROPERTY(QString password READ password WRITE setPassword)
+    Q_PROPERTY(bool active READ isActive WRITE setActive)
+    Q_CLASSINFO("fields", "profile_id, role_id")
+
+public:
+    User();
+    User(const User &other);
+
+    QString password() const;
+    void setPassword(const QString &password, bool encrypt = false);
+
+    bool isActive() const;
+    void setActive(bool active = true);
+
+    QString profileName() const;
+    UserProfile profile() const;
+
+    bool hasRole(const QString &name) const;
     Role role() const;
-    void setRole(const Role &role);
-    
-    bool inGroup(const QString &group) const;
-    QList<Group> groups() const;
-    void setGroups(const QList<Group> &groups);
-       
-    bool hasPrivilege(const QString &name) const;
-    QList<Privilege> privileges() const;
-    
-    bool hasPermission(const QString &name) const;
-    QList<Permission> permissions() const;
-    
-    void fill(const User &user);
-    void clear() override;
-    
-    bool get(const QString &filter) override;
+
     bool insert() override;
-    bool update() override;
-    bool deleteData() override;
 };
 
 }
+
+#endif // SYSTEMUS_USER_H
