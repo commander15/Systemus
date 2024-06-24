@@ -4,7 +4,7 @@ systemus_add_library(core
 )
 
 add_subdirectory(kernel)
-add_subdirectory(orm)
+add_subdirectory(data)
 add_subdirectory(user)
 
 target_include_directories(core

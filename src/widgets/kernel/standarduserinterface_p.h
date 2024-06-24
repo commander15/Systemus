@@ -5,9 +5,9 @@
 #include <SystemusWidgets/private/userinterface_p.h>
 #include <SystemusWidgets/tableview.h>
 
-#include <QtWidgets/qmenu.h>
+#include <SystemusCore/datamodel.h>
 
-#include <QtSql/qsqlquerymodel.h>
+#include <QtWidgets/qmenu.h>
 
 namespace Systemus {
 
@@ -19,8 +19,7 @@ public:
     QList<UserInterface::InterfaceAction> supportedActions;
 
     QMenu menu;
-    QSqlQueryModel model;
-    Data data;
+    DataModel model;
 };
 
 }

@@ -6,8 +6,6 @@
 
 class QMenu;
 
-class QSqlQueryModel;
-
 namespace Systemus {
 
 namespace Ui {
@@ -15,6 +13,8 @@ class StandardUserInterface;
 }
 
 class TableView;
+class DataModel;
+class Data;
 
 class StandardUserInterfacePrivate;
 class SYSTEMUS_WIDGETS_EXPORT StandardUserInterface : public UserInterface
@@ -25,21 +25,24 @@ public:
     explicit StandardUserInterface(const QByteArray &id, QWidget *parent = nullptr);
     virtual ~StandardUserInterface();
 
+    Q_SLOT bool refresh();
+
     TableView *tableView() const;
     QMenu *contextMenu() const;
-    QSqlQueryModel *dataModel() const;
+    DataModel *dataModel() const;
 
-    template<typename T>
-    void setInterfaceModel()
-    { }
+    void setInterfaceModel(const Data &data);
 
     InterfaceType interfaceType() const override
     { return StandardInterface; }
 
+protected:
+    void initUi() override;
+    void translateUi() override;
+    QVariant processAction(InterfaceAction action, const QVariant &data) override;
+
 private:
     Q_SLOT void showContextMenu(const QPoint &pos);
-
-    Q_SLOT void refresh();
 
     Ui::StandardUserInterface *ui;
 };

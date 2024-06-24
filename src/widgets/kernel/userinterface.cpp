@@ -62,10 +62,12 @@ bool UserInterface::supportAction(InterfaceAction &action) const
     return false;
 }
 
-void UserInterface::trigger(InterfaceAction action, const QVariant &data)
+QVariant UserInterface::trigger(InterfaceAction action, const QVariant &data)
 {
     if (supportAction(action))
-        processAction(action, data);
+        return processAction(action, data);
+    else
+        return QVariant();
 }
 
 QAction *UserInterface::interfaceAction() const
@@ -108,10 +110,11 @@ void UserInterface::translateUi()
 {
 }
 
-void UserInterface::processAction(InterfaceAction action, const QVariant &data)
+QVariant UserInterface::processAction(InterfaceAction action, const QVariant &data)
 {
     Q_UNUSED(action);
     Q_UNUSED(data);
+    return QVariant();
 }
 
 UserInterfacePrivate::UserInterfacePrivate(const QByteArray &id, UserInterface *qq) :

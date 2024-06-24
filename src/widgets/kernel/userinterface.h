@@ -42,7 +42,7 @@ public:
     Q_SIGNAL void interfaceTitleChanged(const QString &title);
 
     virtual bool supportAction(InterfaceAction &action) const;
-    void trigger(InterfaceAction action, const QVariant &data = QVariant());
+    QVariant trigger(InterfaceAction action, const QVariant &data = QVariant());
     Q_SIGNAL void actionSupportUpdated(InterfaceAction action, bool supported);
 
     QAction *interfaceAction() const;
@@ -59,7 +59,7 @@ protected:
     virtual void cleanupUi();
     virtual void translateUi();
 
-    virtual void processAction(InterfaceAction action, const QVariant &data);
+    virtual QVariant processAction(InterfaceAction action, const QVariant &data);
 
     mutable QScopedPointer<UserInterfacePrivate> d_ptr;
 };

@@ -21,6 +21,12 @@ StandardUserInterface::~StandardUserInterface()
     delete ui;
 }
 
+bool StandardUserInterface::refresh()
+{
+    S_D(StandardUserInterface);
+    return d->model.select();
+}
+
 TableView *StandardUserInterface::tableView() const
 {
     return ui->tableView;
@@ -32,10 +38,40 @@ QMenu *StandardUserInterface::contextMenu() const
     return &d->menu;
 }
 
-QSqlQueryModel *StandardUserInterface::dataModel() const
+DataModel *StandardUserInterface::dataModel() const
 {
     S_D(StandardUserInterface);
     return &d->model;
+}
+
+void StandardUserInterface::setInterfaceModel(const Data &data)
+{
+    S_D(StandardUserInterface);
+    d->model.setModel(data);
+}
+
+void StandardUserInterface::initUi()
+{
+    S_D(StandardUserInterface);
+
+    if (d->model.rowCount() == 0)
+        d->model.select();
+}
+
+void StandardUserInterface::translateUi()
+{
+    ui->retranslateUi(this);
+}
+
+QVariant StandardUserInterface::processAction(InterfaceAction action, const QVariant &data)
+{
+    switch (action) {
+    case RefreshAction:
+        return refresh();
+
+    default:
+        return QVariant();
+    }
 }
 
 void StandardUserInterface::showContextMenu(const QPoint &pos)
@@ -47,12 +83,6 @@ void StandardUserInterface::showContextMenu(const QPoint &pos)
         QPoint cursorPos = ui->tableView->viewport()->mapTo(this, pos);
         d->menu.popup(cursorPos);
     }
-}
-
-void StandardUserInterface::refresh()
-{
-    S_D(StandardUserInterface);
-    d->model.setQuery(d->data.selectStatement());
 }
 
 StandardUserInterfacePrivate::StandardUserInterfacePrivate(const QByteArray &id, StandardUserInterface *qq) :

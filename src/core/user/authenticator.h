@@ -42,7 +42,7 @@ public:
 
     bool isLoggedIn() const;
     User loggedUser() const;
-    Q_SLOT void logIn(const QString &name, const QString &password);
+    Q_SLOT bool logIn(const QString &name, const QString &password);
     Q_SLOT void logOut();
     Q_SIGNAL void loggedIn(const User &user);
     Q_SIGNAL void loggedOut();

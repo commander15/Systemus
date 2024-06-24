@@ -345,10 +345,15 @@ QSqlQuery Data::exec(const QString &query, bool *ok) const
     return execQuery(query, ok, &d->lastError);
 }
 
-QSqlQuery Data::execQuery(const QString &query, bool *ok, QSqlError *error)
+QSqlQuery Data::execCachedQuery(const QString &query, bool *ok, QSqlError *error)
+{
+    return execQuery(query, ok, error, true);
+}
+
+QSqlQuery Data::execQuery(const QString &query, bool *ok, QSqlError *error, bool cached)
 {
     QSqlQuery qu;
-    qu.setForwardOnly(true);
+    qu.setForwardOnly(!cached);
 
     if (ok)
         *ok = qu.exec(query);

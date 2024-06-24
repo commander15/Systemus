@@ -64,19 +64,28 @@ public:
     void page(int page)
     { _page = page; }
 
+    bool hasWhereClause() const
+    { return !_filters.isEmpty(); }
     QString whereClause() const
-    { return (!_filters.isEmpty() ? "WHERE " + _filters.join(" AND ") : QString()); }
+    { return (hasWhereClause() ? "WHERE " + _filters.join(" AND ") : QString()); }
 
+    bool hasGroupByClause() const
+    { return !_groups.isEmpty(); }
     QString groupByClause() const
     {
-        if (!_groups.isEmpty())
+        if (hasGroupByClause())
             return "GROUP BY " + _groups.join(", ");
         else
             return QString();
     }
 
+    bool hasOrderByClause() const
+    { return !_sortFields.isEmpty(); }
     QString orderByClause() const
     {
+        if (!hasOrderByClause())
+            return QString();
+
         QStringList clauses;
         for (int i(0); i < _sortFields.size(); ++i) {
             const QString field = _sortFields.at(i);
@@ -84,20 +93,31 @@ public:
             clauses.append(field + ' ' + order);
         }
 
-        if (!clauses.isEmpty())
-            return QStringLiteral("ORDER BY ") + clauses.join(", ");
-        else
-            return QString();
+        return QStringLiteral("ORDER BY ") + clauses.join(", ");
     }
+
+    bool hasLimitOffsetClause() const
+    { return _page > 0 && _itemsPerPage > 0; }
 
     QString limitOffsetClause() const
     {
-        if (_page > 0 && _itemsPerPage > 0)
+        if (hasLimitOffsetClause())
             return QStringLiteral("LIMIT %1 OFFSET %2").arg(_itemsPerPage).arg((_page - 1) * _itemsPerPage);
         else
             return QString();
     }
 
+    void clear()
+    {
+        _filters.clear();
+        _groups.clear();
+        _sortFields.clear();
+        _sortOrders.clear();
+        _page = 0;
+        _itemsPerPage = 100;
+    }
+
+protected:
     QStringList _filters;
     QStringList _groups;
     QStringList _sortFields;
@@ -238,7 +258,8 @@ protected:
     virtual void extractRecord(const QSqlRecord &record);
 
     QSqlQuery exec(const QString &query, bool *ok = nullptr) const;
-    static QSqlQuery execQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr);
+    static QSqlQuery execCachedQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr);
+    static QSqlQuery execQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr, bool cached = false);
 
     QSharedDataPointer<DataPrivate> d_ptr;
 
@@ -260,6 +281,8 @@ private:
 
     template<typename MainData, typename ForeignData>
     friend class DataRelationship;
+
+    friend class DataModel;
 
     friend class StandardUserInterface;
 };

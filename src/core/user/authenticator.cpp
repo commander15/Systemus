@@ -57,7 +57,7 @@ User Authenticator::loggedUser() const
     return d->user;
 }
 
-void Authenticator::logIn(const QString &name, const QString &password)
+bool Authenticator::logIn(const QString &name, const QString &password)
 {
     if (isLoggedIn())
         logOut();
@@ -72,6 +72,7 @@ void Authenticator::logIn(const QString &name, const QString &password)
         emit loggedIn(user);
 
         d->error = AuthenticationError::NoError;
+        return true;
     } else {
         AuthenticationError::ErrorType error = AuthenticationError::UnknownError;
 
@@ -86,6 +87,7 @@ void Authenticator::logIn(const QString &name, const QString &password)
 
         d->error = error;
         emit logInError(error);
+        return false;
     }
 }
 
