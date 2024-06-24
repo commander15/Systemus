@@ -10,6 +10,7 @@ class DataModelPrivate : public DataSearch
 {
 public:
     DataModelPrivate(DataModel *qq);
+    ~DataModelPrivate();
 
     QString filter() const;
     void setFilter(const QString &filter);
@@ -18,7 +19,9 @@ public:
 
     DataModel *q;
 
-    Data data;
+    QString tableName;
+    QSqlRecord tableRecord;
+    QHash<QString, QSqlRelation> tableRelations;
 };
 
 }

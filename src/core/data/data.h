@@ -181,6 +181,8 @@ public:
     { return tableRelations(*metaObject); }
     static QList<QSqlRelation> tableRelations(const QMetaObject &metaObject);
 
+    inline QString displayFieldName() const
+    { return displayFieldName(*metaObject); }
     static QString displayFieldName(const QMetaObject &object);
 
     inline QString foreignFieldName() const

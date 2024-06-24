@@ -25,13 +25,12 @@ public:
     explicit StandardUserInterface(const QByteArray &id, QWidget *parent = nullptr);
     virtual ~StandardUserInterface();
 
+    Q_SLOT void search();
     Q_SLOT bool refresh();
 
     TableView *tableView() const;
     QMenu *contextMenu() const;
     DataModel *dataModel() const;
-
-    void setInterfaceModel(const Data &data);
 
     InterfaceType interfaceType() const override
     { return StandardInterface; }

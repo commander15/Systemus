@@ -12,6 +12,13 @@ StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *pare
 
     ui->setupUi(this);
 
+    ui->searchInput->addAction(ui->actionSearchQuery, QLineEdit::LeadingPosition);
+    ui->searchInput->addAction(ui->actionSearch, QLineEdit::TrailingPosition);
+
+    connect(ui->actionSearch, &QAction::triggered, this, &StandardUserInterface::search);
+
+    connect(ui->refreshButton, &QAbstractButton::clicked, this, &StandardUserInterface::refresh);
+
     ui->tableView->setModel(&d->model);
     connect(ui->tableView, &QWidget::customContextMenuRequested, this, &StandardUserInterface::showContextMenu);
 }
@@ -19,6 +26,15 @@ StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *pare
 StandardUserInterface::~StandardUserInterface()
 {
     delete ui;
+}
+
+void StandardUserInterface::search()
+{
+    S_D(StandardUserInterface);
+
+    QString field = d->model.tableName();
+    d->model.setFilter(field + " = '" + ui->searchInput->text() + '\'');
+    d->model.select();
 }
 
 bool StandardUserInterface::refresh()
@@ -42,12 +58,6 @@ DataModel *StandardUserInterface::dataModel() const
 {
     S_D(StandardUserInterface);
     return &d->model;
-}
-
-void StandardUserInterface::setInterfaceModel(const Data &data)
-{
-    S_D(StandardUserInterface);
-    d->model.setModel(data);
 }
 
 void StandardUserInterface::initUi()

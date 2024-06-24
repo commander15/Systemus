@@ -1,15 +1,22 @@
 <RCC>
-  <qresource prefix="/systemus">
-    <file>icons/action_add.png</file>
-    <file>icons/action_delete.png</file>
-    <file>icons/action_edit.png</file>
-    <file>icons/database_host.png</file>
-    <file>icons/filter_icon.png</file>
-    <file>icons/database_name.png</file>
-    <file>icons/login_icon.png</file>
-    <file>icons/login_id.png</file>
-    <file>icons/login_password.png</file>
-    <file>icons/login_icon.png</file>
-    <file>icons/login_settings.png</file>
-  </qresource>
+    <qresource prefix="/systemus">
+        <file>icons/action_add.png</file>
+        <file>icons/action_delete.png</file>
+        <file>icons/action_edit.png</file>
+        <file>icons/database_host.png</file>
+        <file>icons/filter_icon.png</file>
+        <file>icons/database_name.png</file>
+        <file>icons/login_icon.png</file>
+        <file>icons/login_id.png</file>
+        <file>icons/login_password.png</file>
+        <file>icons/login_icon.png</file>
+        <file>icons/login_settings.png</file>
+        <file>icons/action_print.png</file>
+        <file>icons/action_refresh.png</file>
+        <file>icons/action_show.png</file>
+        <file>icons/password_hide.png</file>
+        <file>icons/password_show.png</file>
+        <file>icons/search_go.png</file>
+        <file>icons/search_icon.png</file>
+    </qresource>
 </RCC>

@@ -119,7 +119,8 @@ QVariant UserInterface::processAction(InterfaceAction action, const QVariant &da
 
 UserInterfacePrivate::UserInterfacePrivate(const QByteArray &id, UserInterface *qq) :
     q(qq),
-    id(id)
+    id(id),
+    _action(nullptr)
 {
 }
 

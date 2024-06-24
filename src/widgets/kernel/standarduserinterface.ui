@@ -37,6 +37,14 @@
       </spacer>
      </item>
      <item>
+      <widget class="QToolButton" name="refreshButton">
+       <property name="icon">
+        <iconset resource="../resources/systemus_widgets_res.qrc">
+         <normaloff>:/systemus/icons/action_refresh.png</normaloff>:/systemus/icons/action_refresh.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QToolButton" name="addButton">
        <property name="icon">
         <iconset resource="../resources/systemus_widgets_res.qrc">
@@ -61,7 +69,12 @@
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="printButton"/>
+      <widget class="QToolButton" name="printButton">
+       <property name="icon">
+        <iconset resource="../resources/systemus_widgets_res.qrc">
+         <normaloff>:/systemus/icons/action_print.png</normaloff>:/systemus/icons/action_print.png</iconset>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -77,6 +90,10 @@
    </item>
   </layout>
   <action name="actionSearchQuery">
+   <property name="icon">
+    <iconset resource="../resources/systemus_widgets_res.qrc">
+     <normaloff>:/systemus/icons/search_icon.png</normaloff>:/systemus/icons/search_icon.png</iconset>
+   </property>
    <property name="text">
     <string>Query</string>
    </property>
@@ -85,6 +102,10 @@
    </property>
   </action>
   <action name="actionSearch">
+   <property name="icon">
+    <iconset resource="../resources/systemus_widgets_res.qrc">
+     <normaloff>:/systemus/icons/search_go.png</normaloff>:/systemus/icons/search_go.png</iconset>
+   </property>
    <property name="text">
     <string>Search</string>
    </property>
