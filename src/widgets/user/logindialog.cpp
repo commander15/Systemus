@@ -36,6 +36,8 @@ LoginDialog::LoginDialog(QWidget *parent) :
     Authenticator *auth = Authenticator::instance();
     connect(auth, &Authenticator::loggedIn, this, [this](const User &) { accept(); });
     connect(auth, &Authenticator::logInError, this, &LoginDialog::processError);
+
+    connect(this, &QDialog::rejected, qApp, &QCoreApplication::quit);
 }
 
 LoginDialog::~LoginDialog()
@@ -50,9 +52,9 @@ void LoginDialog::setShowOnLogOut(bool show)
 
     Authenticator *auth = Authenticator::instance();
     if (show)
-        connect(auth, &Authenticator::loggedOut, this, &QDialog::exec);
+        connect(auth, &Authenticator::loggedOut, this, &QWidget::show);
     else
-        disconnect(auth, &Authenticator::loggedOut, this, &QDialog::exec);
+        disconnect(auth, &Authenticator::loggedOut, this, &QWidget::show);
 
     _showOnLogOut = show;
 }
@@ -60,7 +62,6 @@ void LoginDialog::setShowOnLogOut(bool show)
 void LoginDialog::done(int r)
 {
     ui->passwordInput->clear();
-
     QDialog::done(r);
 }
 

@@ -27,6 +27,12 @@ void DataModel::setTableName(const QString &name)
     d->tableName = name;
 }
 
+int DataModel::fieldCount() const
+{
+    S_D(const DataModel);
+    return d->tableRecord.count();
+}
+
 int DataModel::addField(const QString &name, QMetaType::Type type, const QString &table)
 {
     S_D(DataModel);
@@ -44,6 +50,12 @@ void DataModel::replaceField(int pos, const QString &name, QMetaType::Type type,
 {
     S_D(DataModel);
     d->tableRecord.replace(pos, QSqlField(name, QMetaType(type), table));
+}
+
+int DataModel::relationCount() const
+{
+    S_D(const DataModel);
+    return d->tableRelations.size();
 }
 
 int DataModel::addRelation(const QString &table)

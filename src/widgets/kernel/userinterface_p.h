@@ -8,13 +8,14 @@ namespace Systemus {
 class UserInterfacePrivate
 {
 public:
-    UserInterfacePrivate(const QByteArray &id, UserInterface *qq);
+    UserInterfacePrivate(const QByteArray &id, UserInterface *q);
+    ~UserInterfacePrivate();
 
     virtual void init();
 
     QAction *action() const;
 
-    UserInterface *q;
+    UserInterface *q_ptr;
 
     const QByteArray id;
 

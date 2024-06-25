@@ -1,5 +1,7 @@
 #include "tableview.h"
 
+#include <QtWidgets/qheaderview.h>
+
 namespace Systemus {
 
 TableView::TableView(QWidget *parent) :
@@ -8,8 +10,6 @@ TableView::TableView(QWidget *parent) :
     setSelectionMode(MultiSelection);
     setSelectionBehavior(SelectRows);
     setEditTriggers(NoEditTriggers);
-
-    viewport()->installEventFilter(this);
 }
 
 TableView::~TableView()
@@ -65,6 +65,10 @@ void TableView::setModel(QSqlQueryModel *model)
 void TableView::prepare()
 {
     hideColumn(0);
+
+    QHeaderView *view = horizontalHeader();
+    for (int i(1); i < view->count(); ++i)
+        view->setSectionResizeMode(i, QHeaderView::Stretch);
 }
 
 }

@@ -23,14 +23,14 @@ public:
     void setTableName(const QString &name);
 
     //QSqlField tableField(int column) const;
-    //int tableFieldCount() const;
+    int fieldCount() const;
     int addField(const QString &name, QMetaType::Type type, const QString &table = QString());
     void insertField(int pos, const QString &name, QMetaType::Type type, const QString &table = QString());
     void replaceField(int pos, const QString &name, QMetaType::Type type, const QString &table = QString());
     //void removeField(const QString &name);
 
     //QSqlRelation tableRelation(int index) const;
-    //int tableRelationCount() const;
+    int relationCount() const;
     int addRelation(const QString &table);
     int addRelation(const QString &table, const QString &foreignIndex);
     int addRelation(const QString &table, const QString &index, const QString &foreignIndex);

@@ -27,10 +27,17 @@ public:
 
     Q_SLOT void search();
     Q_SLOT bool refresh();
+    Q_SLOT void showData();
+    Q_SLOT void addData();
+    Q_SLOT void editData();
+    Q_SLOT void deleteData();
+    Q_SLOT void printData();
 
     TableView *tableView() const;
     QMenu *contextMenu() const;
     DataModel *dataModel() const;
+
+    bool supportAction(int action) const override;
 
     InterfaceType interfaceType() const override
     { return StandardInterface; }
@@ -38,7 +45,7 @@ public:
 protected:
     void initUi() override;
     void translateUi() override;
-    QVariant processAction(InterfaceAction action, const QVariant &data) override;
+    QVariant processAction(int action, const QVariant &data) override;
 
 private:
     Q_SLOT void showContextMenu(const QPoint &pos);

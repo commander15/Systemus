@@ -16,6 +16,7 @@ public:
     enum InterfaceAction {
         SearchAction,
         RefreshAction,
+        ShowAction,
         AddAction,
         EditAction,
         DeleteAction,
@@ -41,8 +42,8 @@ public:
     Q_SLOT void setInterfaceTitle(const QString &title);
     Q_SIGNAL void interfaceTitleChanged(const QString &title);
 
-    virtual bool supportAction(InterfaceAction &action) const;
-    QVariant trigger(InterfaceAction action, const QVariant &data = QVariant());
+    virtual bool supportAction(int action) const;
+    QVariant trigger(int action, const QVariant &data = QVariant());
     Q_SIGNAL void actionSupportUpdated(InterfaceAction action, bool supported);
 
     QAction *interfaceAction() const;
@@ -59,7 +60,7 @@ protected:
     virtual void cleanupUi();
     virtual void translateUi();
 
-    virtual QVariant processAction(InterfaceAction action, const QVariant &data);
+    virtual QVariant processAction(int action, const QVariant &data);
 
     mutable QScopedPointer<UserInterfacePrivate> d_ptr;
 };

@@ -11,11 +11,8 @@ UserInterface::UserInterface(QWidget *parent) :
 }
 
 UserInterface::UserInterface(const QByteArray &id, QWidget *parent) :
-    QWidget(parent),
-    d_ptr(new UserInterfacePrivate(id, this))
+    UserInterface(new UserInterfacePrivate(id, this), parent)
 {
-    S_D(UserInterface);
-    d->init();
 }
 
 UserInterface::UserInterface(UserInterfacePrivate *dd, QWidget *parent) :
@@ -24,6 +21,8 @@ UserInterface::UserInterface(UserInterfacePrivate *dd, QWidget *parent) :
 {
     S_D(UserInterface);
     dd->init();
+
+    setInterfaceIcon(QIcon(":/systemus/icons/login_icon.png"));
 }
 
 UserInterface::~UserInterface()
@@ -56,13 +55,13 @@ void UserInterface::setInterfaceTitle(const QString &title)
     setWindowTitle(title);
 }
 
-bool UserInterface::supportAction(InterfaceAction &action) const
+bool UserInterface::supportAction(int action) const
 {
     Q_UNUSED(action);
     return false;
 }
 
-QVariant UserInterface::trigger(InterfaceAction action, const QVariant &data)
+QVariant UserInterface::trigger(int action, const QVariant &data)
 {
     if (supportAction(action))
         return processAction(action, data);
@@ -110,28 +109,38 @@ void UserInterface::translateUi()
 {
 }
 
-QVariant UserInterface::processAction(InterfaceAction action, const QVariant &data)
+QVariant UserInterface::processAction(int action, const QVariant &data)
 {
     Q_UNUSED(action);
     Q_UNUSED(data);
     return QVariant();
 }
 
-UserInterfacePrivate::UserInterfacePrivate(const QByteArray &id, UserInterface *qq) :
-    q(qq),
+UserInterfacePrivate::UserInterfacePrivate(const QByteArray &id, UserInterface *q) :
+    q_ptr(q),
     id(id),
     _action(nullptr)
 {
 }
 
+UserInterfacePrivate::~UserInterfacePrivate()
+{
+    if (_action)
+        delete _action;
+}
+
 void UserInterfacePrivate::init()
 {
+    S_Q(UserInterface);
+
     QObject::connect(q, &QWidget::windowIconChanged, q, &UserInterface::interfaceIconChanged);
     QObject::connect(q, &QWidget::windowTitleChanged, q, &UserInterface::interfaceTitleChanged);
 }
 
 QAction *UserInterfacePrivate::action() const
 {
+    S_Q(UserInterface);
+
     if (!_action) {
         _action = new QAction(q->interfaceIcon(), q->interfaceTitle(), q);
         _action->setCheckable(true);
