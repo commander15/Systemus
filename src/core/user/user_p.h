@@ -14,91 +14,35 @@ public:
     UserProfilePrivate() = default;
     UserProfilePrivate(const UserProfilePrivate &other) = default;
 
-    bool equalsTo(const DataPrivate *o) const override
-    {
-        const UserProfilePrivate *other = static_cast<const UserProfilePrivate *>(o);
-        return name == other->name
-               && DataPrivate::equalsTo(o);
-    }
+    bool equalsTo(const DataPrivate *o) const override;
 
-    void clear() override
-    {
-        name.clear();
-        DataPrivate::clear();
-    }
+    void clear() override;
 
     QString name;
 };
 
-class UserPrivate : public PrivilegedDataPrivate<User>
+class UserPrivate : public PrivilegedDataPrivate
 {
 public:
-    UserPrivate() = default;
+    UserPrivate();
     UserPrivate(const UserPrivate &other) = default;
 
     static QString encryptPassword(const QString &password);
 
-    bool hasPrivilege(const QString &name) const override
-    {
-        return role.object().hasPrivilege(name)
-               || PrivilegedDataPrivate<User>::hasPrivilege(name);
-    }
+    bool isPrivilegeActive(const QString &name) const override;
 
-    bool isPrivilegeActive(const QString &name) const override
-    {
-        return role.object().isPrivilegeActive(name)
-               || PrivilegedDataPrivate<User>::isPrivilegeActive(name);
-    }
 
-    QList<Privilege> privileges() const override
-    { return role.object().privileges() + PrivilegedDataPrivate<User>::privileges(); }
+    bool isPermissionActive(const QString &name) const override;
 
-    bool hasPermission(const QString &name) const override
-    {
-        return role.object().hasPermission(name)
-               || PrivilegedDataPrivate<User>::hasPermission(name);
-    }
+    bool equalsTo(const DataPrivate *o) const override;
 
-    bool isPermissionActive(const QString &name) const override
-    {
-        return role.object().isPermissionActive(name)
-               || PrivilegedDataPrivate<User>::isPermissionActive(name);
-    }
-
-    QList<Permission> permissions() const override
-    { return role.object().permissions() + PrivilegedDataPrivate<User>::permissions(); }
-
-    bool get(const Data &primaryData) override
-    {
-        const User &user = static_cast<const User &>(primaryData);
-        return profile.get(user)
-            && role.get(user)
-            && PrivilegedDataPrivate<User>::get(primaryData);
-    }
-
-    bool equalsTo(const DataPrivate *o) const override
-    {
-        const UserPrivate *other = static_cast<const UserPrivate *>(o);
-        return password == other->password
-               && active == other->active
-               && profile == other->profile
-               && role == other->role
-               && PrivilegedDataPrivate<User>::equalsTo(o);
-    }
-
-    void clear() override
-    {
-        password.clear();
-        active = false;
-        role.clear();
-        PrivilegedDataPrivate<User>::clear();
-    }
+    void clear() override;
 
     QString password;
     bool active = false;
 
-    OneToOneRelationship<User, UserProfile> profile;
-    OneToOneRelationship<User, Role> role;
+    OneToOneRelation<UserProfile> profile;
+    OneToOneRelation<Role> role;
 };
 
 }

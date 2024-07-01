@@ -11,30 +11,42 @@
 
 #include <QtCore/qmetaobject.h>
 #include <QtCore/qjsondocument.h>
+#include <QtCore/qjsonarray.h>
 
 namespace Systemus {
 
 Data::Data() :
-    d_ptr(new DataPrivate),
-    metaObject(&staticMetaObject)
+    d_ptr(new DataPrivate)
 {
 }
 
 Data::Data(DataPrivate *data) :
-    d_ptr(data),
-    metaObject(&staticMetaObject)
+    d_ptr(data)
 {
 }
 
 Data::Data(const QSharedDataPointer<DataPrivate> &other) :
-    d_ptr(other),
-    metaObject(&staticMetaObject)
+    d_ptr(other)
 {
 }
 
+void Data::init()
+{
+}
+
+QByteArray Data::className() const
+{
+    return staticMetaObject.className();
+}
+
+void Data::setDataInfo(const DataInfo &info)
+{
+    S_D(Data);
+    dataInfo() = info;
+}
+
 Data::Data(const Data &other) :
-    d_ptr(other.d_ptr),
-    metaObject(&staticMetaObject)
+    d_ptr(other.d_ptr)
 {
 }
 
@@ -44,29 +56,29 @@ Data::~Data()
 
 Data &Data::operator=(const Data &other)
 {
-    if (metaObject == &Data::staticMetaObject)
-        qWarning() << Q_FUNC_INFO << "called with base class, forgoten init<Super>() call in constructor ?";
-    else if (this != &other && metaObject == other.metaObject)
+    if (this != &other)
         d_ptr = other.d_ptr;
-
     return *this;
 }
 
 int Data::id() const
 {
     S_D(const Data);
+    initOperation();
     return d->id;
 }
 
 void Data::setId(int id)
 {
     S_D(Data);
+    initOperation();
     d->id = id;
 }
 
 QVariant Data::property(const QString &name) const
 {
     S_D(const Data);
+    initOperation();
 
     const QMetaProperty property = metaPropertyByName(name);
     if (property.isValid())
@@ -80,6 +92,7 @@ QVariant Data::property(const QString &name) const
 void Data::setProperty(const QString &name, const QVariant &value)
 {
     S_D(Data);
+    initOperation();
 
     const QMetaProperty property = metaPropertyByName(name);
     if (property.isValid())
@@ -90,47 +103,70 @@ void Data::setProperty(const QString &name, const QVariant &value)
 
 QMetaProperty Data::metaPropertyByName(const QString &name) const
 {
-    for (int i(0); i < metaObject->propertyCount(); ++i) {
-        const QMetaProperty property = metaObject->property(i);
-        if ((property.name()) == name)
+    S_D(const Data);
+    initOperation();
+
+    const DataInfo info = dataInfo();
+
+    for (int i(0); i < info.metaObject()->propertyCount(); ++i) {
+        const QMetaProperty property = info.metaObject()->property(i);
+        if (property.name() == name)
             return property;
     }
 
     return QMetaProperty();
 }
 
+DataInfo Data::dataInfo() const
+{
+    initOperation();
+    return DataInfo::fromRegistry(className());
+}
+
 bool Data::isValid() const
 {
     S_D(const Data);
+    initOperation();
     return d->id > 0;
 }
 
 void Data::fill(const Data &other)
 {
-    for (int i(1); i < metaObject->propertyCount(); ++i) {
-        const QMetaProperty property = metaObject->property(i);
-        if (!property.isStored())
-            continue;
+    S_D(Data);
+    initOperation();
 
+    for (int i(1); i < dataInfo().metaObject()->propertyCount(); ++i) {
+        const QMetaProperty property = dataInfo().metaObject()->property(i);
         property.writeOnGadget(this, property.readOnGadget(&other));
     }
 }
 
 void Data::dumpInfos() const
 {
+    initOperation();
+
     QJsonDocument doc;
     doc.setObject(toJsonObject());
     qInfo().noquote() << doc.toJson(QJsonDocument::Indented);
 }
 
+bool Data::isEmpty() const
+{
+    S_D(const Data);
+    return d->id == 0;
+}
+
 void Data::clear()
 {
     S_D(Data);
+    initOperation();
     d->clear();
 }
 
 bool Data::get(const QString &filter, bool withExtras)
 {
+    initOperation();
+
     const QString request = selectStatement() + " WHERE " + filter + " LIMIT 1";
     bool ok;
     QSqlQuery query = exec(request, &ok);
@@ -145,6 +181,7 @@ bool Data::get(const QString &filter, bool withExtras)
 
 bool Data::getExtras()
 {
+    initOperation();
     return true;
 }
 
@@ -161,6 +198,7 @@ bool Data::save()
 bool Data::insert()
 {
     S_D(Data);
+    initOperation();
 
     const QString request = insertStatement();
     bool ok;
@@ -176,6 +214,7 @@ bool Data::insert()
 bool Data::update()
 {
     S_D(Data);
+    initOperation();
 
     const QString request = updateStatement() + " WHERE id = " + QString::number(d->id);
     bool ok;
@@ -187,6 +226,7 @@ bool Data::update()
 bool Data::deleteData()
 {
     S_D(Data);
+    initOperation();
 
     const QString request = deleteStatement() + " WHERE id = " + QString::number(d->id);   
     bool ok;
@@ -202,101 +242,37 @@ bool Data::deleteData()
 QSqlError Data::lastError() const
 {
     S_D(const Data);
+    initOperation();
     return d->lastError;
 }
 
-QString Data::tableName(const QMetaObject &metaObject)
+QSqlRecord Data::toSqlRecord() const
 {
-    int index = metaObject.indexOfClassInfo("table");
+    S_D(const Data);
+    initOperation();
 
-    if (index >= 0)
-        return metaObject.classInfo(index).value();
-    else
-        return DataPrivate::tableNameFromClassName(metaObject.className());
-}
-
-QSqlRecord Data::tableRecord(const QMetaObject &metaObject, bool includeTable, bool excludeReadOnly)
-{
-    QSqlRecord record;
-
-    for (int i(0); i < metaObject.propertyCount(); ++i) {
-        const QMetaProperty property = metaObject.property(i);
-        if (excludeReadOnly && !property.isWritable())
-            continue;
-        else if (DataPrivate::isStandardFieldProperty(property, metaObject))
-            record.append(DataPrivate::standardFieldFromProperty(property, metaObject, includeTable));
-        else if (DataPrivate::isForeignProperty(property, metaObject))
-            record.append(DataPrivate::foreignFieldFromProperty(property, metaObject, includeTable));
-    }
-
-    {
-        int fieldsId = metaObject.indexOfClassInfo("fields");
-        QStringList fields = QString(metaObject.classInfo(fieldsId).value()).split(", ", Qt::SkipEmptyParts);
-
-        for (const QString &field : fields)
-            record.append(QSqlField(field, QMetaType(QMetaType::Int)));
-    }
-
-    return record;
-}
-
-QList<QSqlRelation> Data::tableRelations(const QMetaObject &metaObject)
-{
-    QList<QSqlRelation> relations;
-
-    for (int i(0); i < metaObject.propertyCount(); ++i) {
-        const QMetaProperty property = metaObject.property(i);
-        if (DataPrivate::isRelationProperty(property, metaObject))
-            relations.append(DataPrivate::relationFromProperty(property, metaObject));
-    }
-
-    return relations;
-}
-
-QString Data::displayFieldName(const QMetaObject &object)
-{
-    for (int i(0); i < object.propertyCount(); ++i) {
-        const QMetaProperty property = object.property(i);
-        if (!property.isReadable() || !property.isStored())
-            continue;
-
-        if (property.isUser())
-            return property.name();
-    }
-
-    return QString();
-}
-
-QString Data::foreignFieldName(const QMetaObject &metaObject)
-{
-    int index = metaObject.indexOfClassInfo("foreign_field");
-
-    if (index >= 0)
-        return metaObject.classInfo(index).value();
-    else
-        return tableName(metaObject).toLower().removeLast() + "_id";
-}
-
-QSqlRecord Data::toSqlRecord(bool includeTable) const
-{
-    QSqlRecord record = tableRecord(*metaObject, includeTable);
+    QSqlRecord record = dataInfo().record();
     fillRecord(&record);
     return record;
 }
 
 QJsonObject Data::toJsonObject() const
 {
+    S_D(const Data);
+    initOperation();
+
     QJsonObject object;
 
-    const QSqlRecord record = toSqlRecord(false);
-    for (int i(0); i < record.count(); ++i)
-        object.insert(record.fieldName(i), QJsonValue::fromVariant(record.value(i)));
+    for (int i(0); i < dataInfo().fieldCount(); ++i)
+        object.insert(dataInfo().fieldName(i), QJsonValue::fromVariant(property(dataInfo().propertyName(i))));
 
     return object;
 }
 
 bool Data::operator==(const Data &other) const
 {
+    initOperation();
+
     if (this == &other || d_ptr == other.d_ptr)
         return true;
     else
@@ -305,43 +281,29 @@ bool Data::operator==(const Data &other) const
 
 void Data::fillRecord(QSqlRecord *record) const
 {
-    for (int i(0); i < metaObject->propertyCount(); ++i) {
-        const QMetaProperty property = metaObject->property(i);
-        if (!property.isReadable() || !property.isStored())
-            continue;
+    S_D(const Data);
+    initOperation();
 
-        const QString fieldName = DataPrivate::fieldNameFromPropertyName(property.name());
-        if (record->contains(fieldName))
-            record->setValue(fieldName, property.readOnGadget(this));
-    }
-
-    int id = metaObject->indexOfClassInfo("fields");
-    const QStringList fields = QString(metaObject->classInfo(id).value()).split(", ", Qt::SkipEmptyParts);
-    for (const QString &field : fields)
-        record->setValue(field, property(field));
+    for (int i(0); i < dataInfo().fieldCount(); ++i)
+        if (record->contains(dataInfo().fieldName(i)))
+            record->setValue(dataInfo().fieldName(i), property(dataInfo().propertyName(i)));
 }
 
 void Data::extractRecord(const QSqlRecord &record)
 {
-    for (int i(0); i < metaObject->propertyCount(); ++i) {
-        const QMetaProperty property = metaObject->property(i);
-        if (!property.isReadable() || !property.isStored())
-            continue;
+    S_D(Data);
+    initOperation();
 
-        const QString fieldName = DataPrivate::fieldNameFromPropertyName(property.name());
-        if (record.contains(fieldName))
-            property.writeOnGadget(this, record.value(fieldName));
-    }
-
-    int id = metaObject->indexOfClassInfo("fields");
-    const QStringList fields = QString(metaObject->classInfo(id).value()).split(", ", Qt::SkipEmptyParts);
-    for (const QString &field : fields)
-        setProperty(field, record.value(field));
+    const DataInfo info = dataInfo();
+    for (int i(0); i < info.fieldCount(); ++i)
+        if (record.contains(info.fieldName(i)))
+            setProperty(info.propertyName(i), record.value(info.fieldName(i)));
 }
 
 QSqlQuery Data::exec(const QString &query, bool *ok) const
 {
     S_D(const Data);
+    initOperation();
     return execQuery(query, ok, &d->lastError);
 }
 
@@ -371,29 +333,51 @@ QSqlQuery Data::execQuery(const QString &query, bool *ok, QSqlError *error, bool
     return qu;
 }
 
-QString Data::selectStatement(const QMetaObject &object)
+void Data::initOperation() const
 {
-    return driver()->sqlStatement(QSqlDriver::SelectStatement, tableName(object), tableRecord(object), false);
+    S_D(const Data);
+
+    if (!d->initialized)
+        qWarning().noquote() << "Systemus::Data: operating on an uninitialized instance, undefined behaviors may occurs";
+}
+
+void Data::initOperation()
+{
+    S_D(Data);
+
+    if (!d->initialized) {
+        init();
+        d->initialized = true;
+    }
+}
+
+QString Data::selectStatement() const
+{
+    S_D(const Data);
+    return selectStatement(dataInfo());
+}
+
+QString Data::selectStatement(const DataInfo &info)
+{
+    return driver()->sqlStatement(QSqlDriver::SelectStatement, info.tableName(), info.record(), false);
 }
 
 QString Data::insertStatement() const
 {
-    QSqlRecord record = toSqlRecord();
-    record.remove(0);
-    return driver()->sqlStatement(QSqlDriver::InsertStatement, tableName(), record, false);
+    S_D(const Data);
+    return driver()->sqlStatement(QSqlDriver::InsertStatement, dataInfo().tableName(), toSqlRecord(), false);
 }
 
 QString Data::updateStatement() const
 {
-    QSqlRecord record = tableRecord(true);
-    record.remove(0);
-    fillRecord(&record);
-    return driver()->sqlStatement(QSqlDriver::UpdateStatement, tableName(), record, false);
+    S_D(const Data);
+    return driver()->sqlStatement(QSqlDriver::UpdateStatement, dataInfo().tableName(), toSqlRecord(), false);
 }
 
 QString Data::deleteStatement() const
 {
-    return driver()->sqlStatement(QSqlDriver::DeleteStatement, tableName(), QSqlRecord(), false);
+    S_D(const Data);
+    return driver()->sqlStatement(QSqlDriver::DeleteStatement, dataInfo().tableName(), QSqlRecord(), false);
 }
 
 QSqlDriver *Data::driver()
@@ -401,277 +385,477 @@ QSqlDriver *Data::driver()
     return QSqlDatabase::database().driver();
 }
 
-void Data::bindQueryValues(QSqlQuery &query) const
+DataSearch::DataSearch()  :
+    _page(0), _itemsPerPage(100)
 {
-    for (int i(0); i < metaObject->propertyCount(); ++i) {
-        const QMetaProperty property = metaObject->property(i);
-        if (!property.isReadable() || !property.isStored())
-            continue;
+}
 
-        query.bindValue(':' + QString(property.name()), property.readOnGadget(this));
+DataSearch::DataSearch(const QString &filter, int page, int itemsPerPage) :
+    _page(page), _itemsPerPage(itemsPerPage)
+{
+    this->filter(filter);
+}
+
+void DataSearch::filter(const QString &filter)
+{
+    if (!filter.isEmpty()) _filters.append(filter);
+}
+
+void DataSearch::group(const QString field)
+{
+    if (!field.isEmpty()) _groups.append(field);
+}
+
+void DataSearch::sort(int field, Qt::SortOrder order)
+{
+    if (field >= 0) {
+        _sortFields.append(QString::number(field + 1));
+        _sortOrders.append(order);
     }
 }
 
-AuthorizationData::AuthorizationData() :
-    Data(new AuthorizationDataPrivate)
+void DataSearch::sort(const QString &field, Qt::SortOrder order)
 {
-    init<AuthorizationData>();
+    if (!field.isEmpty()) {
+        _sortFields.append(field);
+        _sortOrders.append(order);
+    }
 }
 
-AuthorizationData::AuthorizationData(AuthorizationDataPrivate *data) :
-    Data(data)
+void DataSearch::page(int page)
 {
-    init<AuthorizationData>();
+    _page = page;
 }
 
-AuthorizationData::AuthorizationData(const AuthorizationData &other) :
-    Data(other)
+void DataSearch::paginate(int itemsPerPage)
 {
-    init<AuthorizationData>();
+    _itemsPerPage = itemsPerPage;
 }
 
-AuthorizationData::~AuthorizationData()
+bool DataSearch::hasWhereClause() const
+{
+    return !_filters.isEmpty();
+}
+
+QString DataSearch::whereClause() const
+{
+    return (hasWhereClause() ? "WHERE " + _filters.join(" AND ") : QString());
+}
+
+bool DataSearch::hasGroupByClause() const
+{
+    return !_groups.isEmpty();
+}
+
+QString DataSearch::groupByClause() const
+{
+    if (hasGroupByClause())
+        return "GROUP BY " + _groups.join(", ");
+    else
+        return QString();
+}
+
+bool DataSearch::hasOrderByClause() const
+{
+    return !_sortFields.isEmpty();
+}
+
+QString DataSearch::orderByClause() const
+{
+    if (!hasOrderByClause())
+        return QString();
+
+    QStringList clauses;
+    for (int i(0); i < _sortFields.size(); ++i) {
+        const QString field = _sortFields.at(i);
+        const QString order = (_sortOrders.at(i) == Qt::AscendingOrder ? "ASC" : "DESC");
+        clauses.append(field + ' ' + order);
+    }
+
+    return QStringLiteral("ORDER BY ") + clauses.join(", ");
+}
+
+bool DataSearch::hasLimitOffsetClause() const
+{
+    return _page > 0 && _itemsPerPage > 0;
+}
+
+QString DataSearch::limitOffsetClause() const
+{
+    if (hasLimitOffsetClause())
+        return QStringLiteral("LIMIT %1 OFFSET %2").arg(_itemsPerPage).arg((_page - 1) * _itemsPerPage);
+    else
+        return QString();
+}
+
+void DataSearch::clear()
+{
+    _filters.clear();
+    _groups.clear();
+    _sortFields.clear();
+    _sortOrders.clear();
+    _page = 0;
+    _itemsPerPage = 100;
+}
+
+DataInfo::DataInfo(DataInfoPrivate *d) :
+    d_ptr(d)
 {
 }
 
-QString AuthorizationData::name() const
-{
-    S_D(const AuthorizationData);
-    return d->name;
-}
-
-void AuthorizationData::setName(const QString &name)
-{
-    S_D(AuthorizationData);
-    d->name = name;
-}
-
-QString AuthorizationData::description() const
-{
-    S_D(const AuthorizationData);
-    return d->description;
-}
-
-void AuthorizationData::setDescription(const QString &description)
-{
-    S_D(AuthorizationData);
-    d->description = description;
-}
-
-QDate AuthorizationData::creationDate() const
-{
-    S_D(const AuthorizationData);
-    return d->creationDate;
-}
-
-QTime AuthorizationData::creationTime() const
-{
-    S_D(const AuthorizationData);
-    return d->creationTime;
-}
-
-bool AuthorizationData::isValid() const
-{
-    S_D(const AuthorizationData);
-    return !d->name.isEmpty() && Data::isValid();
-}
-
-IssuedAuthorizationData::IssuedAuthorizationData() :
-    Data(new IssuedAuthorizationDataPrivate)
-{
-    init<IssuedAuthorizationData>();
-}
-
-IssuedAuthorizationData::IssuedAuthorizationData(IssuedAuthorizationDataPrivate *data) :
-    Data(data)
-{
-    init<IssuedAuthorizationData>();
-}
-
-IssuedAuthorizationData::IssuedAuthorizationData(const IssuedAuthorizationData &other) :
-    Data(other)
-{
-    init<IssuedAuthorizationData>();
-}
-
-IssuedAuthorizationData::~IssuedAuthorizationData()
+DataInfo::DataInfo() :
+    d_ptr(new DataInfoPrivate)
 {
 }
 
-QString IssuedAuthorizationData::name() const
+DataInfo::DataInfo(const DataInfo &other) :
+    d_ptr(other.d_ptr)
 {
-    S_D(const IssuedAuthorizationData);
-    return d->refData.name();
 }
 
-QString IssuedAuthorizationData::description() const
+DataInfo::~DataInfo()
 {
-    S_D(const IssuedAuthorizationData);
-    return d->refData.description();
 }
 
-bool IssuedAuthorizationData::isActive() const
+DataInfo &DataInfo::operator=(const DataInfo &other)
 {
-    S_D(const IssuedAuthorizationData);
-    return d->active;
+    if (this != &other)
+        d_ptr = other.d_ptr;
+    return *this;
 }
 
-void IssuedAuthorizationData::setActive(bool active)
+QString DataInfo::idFieldName() const
 {
-    S_D(IssuedAuthorizationData);
-    d->active = active;
+    S_D(const DataInfo);
+    return d->tableRecord.fieldName(d->idFieldIndex);
 }
 
-QDate IssuedAuthorizationData::issueDate() const
+QSqlField DataInfo::idField() const
 {
-    S_D(const IssuedAuthorizationData);
-    return d->issueDate;
+    S_D(const DataInfo);
+    return d->tableRecord.field(d->idFieldIndex);
 }
 
-QTime IssuedAuthorizationData::issueTime() const
+QString DataInfo::userFieldName() const
 {
-    S_D(const IssuedAuthorizationData);
-    return d->issueTime;
+    S_D(const DataInfo);
+    return d->tableRecord.fieldName(d->userFieldIndex);
 }
 
-QString DataPrivate::tableNameFromClassName(const QString &className)
+QSqlField DataInfo::userField() const
 {
-    return className.split("::").constLast() + 's';
+    S_D(const DataInfo);
+    return d->tableRecord.field(d->userFieldIndex);
 }
 
-QString DataPrivate::fieldNameFromPropertyName(const QString &propertyName)
+QStringList DataInfo::searchFieldNames() const
+{
+    S_D(const DataInfo);
+
+    QStringList fields;
+
+    for (int field : d->searchFieldIndexes)
+        fields.append(d->tableRecord.fieldName(field));
+    fields.append(QString(d->classInfo("search").value()).remove(' ').split(',', Qt::SkipEmptyParts));
+
+    return fields;
+}
+
+QString DataInfo::fieldName(int index) const
+{
+    S_D(const DataInfo);
+    return d->tableRecord.fieldName(index);
+}
+
+QSqlField DataInfo::field(int index) const
+{
+    S_D(const DataInfo);
+    return d->tableRecord.field(index);
+}
+
+int DataInfo::fieldCount() const
+{
+    S_D(const DataInfo);
+    return d->tableRecord.count();
+}
+
+QSqlRecord DataInfo::record() const
+{
+    S_D(const DataInfo);
+    return d->tableRecord;
+}
+
+QString DataInfo::tableName() const
+{
+    S_D(const DataInfo);
+    return d->tableName;
+}
+
+QString DataInfo::foreignFieldName() const
+{
+    S_D(const DataInfo);
+    return d->tableName.toLower().chopped(1) + "_id";
+}
+
+QSqlField DataInfo::foreignField() const
+{
+    S_D(const DataInfo);
+
+    QSqlField field = d->tableRecord.field(d->idFieldIndex);
+    field.setName(foreignFieldName());
+    return field;
+}
+
+QString DataInfo::foreignPropertyName() const
 {
     QString name;
 
+    bool uppercaseNext = false;
+    for (const QChar &c : foreignFieldName()) {
+        if (c == '_')
+            uppercaseNext = true;
+        else {
+            if (!uppercaseNext)
+                name.append(c);
+            else {
+                name.append(c.toUpper());
+                uppercaseNext = false;
+            }
+        }
+    }
+
+    return name;
+}
+
+QString DataInfo::propertyName(int index) const
+{
+    S_D(const DataInfo);
+    if (index < d->metaFields.size())
+        return d->metaFields.at(index).name();
+    else
+        return d->tableRecord.fieldName(index);
+}
+
+QMetaProperty DataInfo::property(int index) const
+{
+    S_D(const DataInfo);
+    if (index < d->metaFields.size())
+        return (!d->metaFields.isEmpty() ? d->metaFields.at(index) : QMetaProperty());
+    else
+        return QMetaProperty();
+}
+
+const QMetaObject *DataInfo::metaObject() const
+{
+    S_D(const DataInfo);
+    return d->metaObject;
+}
+
+bool DataInfo::operator==(const DataInfo &other) const
+{
+    S_D(const DataInfo);
+    return d->equals(*other.d_ptr);
+}
+
+DataInfo DataInfo::fromRegistry(const QByteArray &className)
+{
+    return _registry.value(className);
+}
+
+DataInfo DataInfo::fromMetaObject(const QMetaObject &object)
+{
+    DataInfoPrivate *d = new DataInfoPrivate;
+    d->update(&object);
+    return DataInfo(d);
+}
+
+DataInfo DataInfo::fromTable(const QString &tableName)
+{
+    return fromTableRecord(tableName, QSqlDatabase::database().record(tableName));
+}
+
+DataInfo DataInfo::fromTableRecord(const QString &tableName, const QSqlRecord &record)
+{
+    DataInfoPrivate *d = new DataInfoPrivate;
+
+    for (int i(0); i < record.count(); ++i) {
+        if (i == 0)
+            d->idFieldIndex = 0;
+        else if (i == 1)
+            d->userFieldIndex = 1;
+
+        QSqlField field = record.field(i);
+        if (field.metaType() == QMetaType::fromType<QString>())
+            d->searchFieldIndexes.append(i);
+    }
+
+    d->tableName = tableName;
+    d->tableRecord = record;
+
+    return DataInfo(d);
+}
+
+QHash<QByteArray, DataInfo> DataInfo::_registry;
+
+DataPrivate::DataPrivate() :
+    id(0),
+    initialized(false)
+{
+    _s_register_internal_types();
+}
+
+bool DataPrivate::equalsTo(const DataPrivate *other) const
+{
+    return id == other->id
+        && values == other->values;
+}
+
+DataInfoPrivate::DataInfoPrivate()
+{
+    update(&Data::staticMetaObject);
+}
+
+DataInfoPrivate::~DataInfoPrivate()
+{
+}
+
+QMetaProperty DataInfoPrivate::property(const QString &name) const
+{
+    return metaObject->property(metaObject->indexOfProperty(name.toStdString().c_str()));
+}
+
+QMetaClassInfo DataInfoPrivate::classInfo(const QString &name) const
+{
+    return metaObject->classInfo(metaObject->indexOfClassInfo(name.toStdString().c_str()));
+}
+
+void DataInfoPrivate::update(const QMetaObject *object)
+{
+    // Cleaning existing data
+    idFieldIndex = 0;
+    userFieldIndex = 1;
+    searchFieldIndexes.clear();
+
+    tableName.clear();
+    tableRecord.clear();
+
+    metaFields.clear();
+    metaObject = object;
+
+    // Extracting table name
+
+    int tableIndex = object->indexOfClassInfo("table");
+    if (tableIndex >= 0)
+        tableName = QString(object->classInfo(tableIndex).value());
+    else
+        tableName = tableNameFromClassName(object->className());
+
+    // Extracting fields
+
+    for (int i(0); i < object->propertyCount(); ++i) {
+        const QMetaProperty property = object->property(i);
+
+        if (property.isStored()) {
+            QSqlField field(fieldNameFromPropertyName(property.name()), property.metaType(), tableName);
+            field.setRequired(property.isRequired());
+            tableRecord.append(field);
+
+            if (tableRecord.count() == 1)
+                idFieldIndex = tableRecord.count() - 1;
+
+            if (property.isUser())
+                userFieldIndex = tableRecord.count() - 1;
+
+            if (property.metaType() == QMetaType::fromType<QString>())
+                searchFieldIndexes.append(tableRecord.count() - 1);
+
+            metaFields.append(property);
+        }
+    }
+
+    int extraFieldsIndex = object->indexOfClassInfo("fields");
+    if (extraFieldsIndex >= 0) {
+        const QList<QSqlField> fields = fieldsFromString(QString(object->classInfo(extraFieldsIndex).value()), tableName, object->className());
+        for (const QSqlField &field : fields)
+            tableRecord.append(field);
+    }
+}
+
+bool DataInfoPrivate::equals(const DataInfoPrivate &other) const
+{
+    return idFieldIndex == other.idFieldIndex
+        && userFieldIndex == other.userFieldIndex
+        && searchFieldIndexes == other.searchFieldIndexes
+        && tableName == other.tableName
+        && tableRecord == other.tableRecord
+        && metaObject == other.metaObject;
+}
+
+QString DataInfoPrivate::tableNameFromClassName(const QString &className)
+{
+    return className.split("::").last() + 's';
+}
+
+QString DataInfoPrivate::fieldNameFromPropertyName(const QString &propertyName)
+{
+    QString name;
     for (const QChar &c : propertyName) {
         if (c.isLower())
             name.append(c);
         else
             name.append('_' + c.toLower());
     }
-
     return name;
 }
 
-bool DataPrivate::isStandardFieldProperty(const QMetaProperty &property, const QMetaObject &metaObject)
+QSqlField DataInfoPrivate::fieldFromProperty(const QMetaProperty &property, const QMetaObject *object)
 {
-    return property.isReadable()
-           && property.isStored()
-           && !isForeignProperty(property, metaObject)
-           && !isRelationProperty(property, metaObject);
-}
-
-QSqlField DataPrivate::standardFieldFromProperty(const QMetaProperty &property, const QMetaObject &metaObject, bool includeTable)
-{
-    QSqlField field;
-    field.setName(fieldNameFromPropertyName(property.name()));
-    field.setMetaType(property.metaType());
+    QSqlField field(fieldNameFromPropertyName(property.name()), property.metaType(), tableNameFromClassName(object->className()));
     field.setRequired(property.isRequired());
-
-    if (includeTable)
-        field.setTableName(Data::tableName(metaObject));
-
+    //field.setReadOnly(!property.isWritable());
     return field;
 }
 
-bool DataPrivate::isForeignProperty(const QMetaProperty &property, const QMetaObject &metaObject)
+QList<QSqlField> DataInfoPrivate::fieldsFromString(const QString &str, const QString &tableName, const QString &context)
 {
-    Q_UNUSED(metaObject);
-
-    const QMetaObject *object = property.metaType().metaObject();
-    return (object ? object->inherits(&Data::staticMetaObject) : false);
-}
-
-QSqlField DataPrivate::foreignFieldFromProperty(const QMetaProperty &property, const QMetaObject &metaObject, bool includeTable)
-{
-    QSqlField field;
-    field.setName(fieldNameFromPropertyName(property.name()));
-    field.setMetaType(QMetaType(QMetaType::Int));
-    field.setRequired(property.isRequired());
-
-    if (includeTable)
-        field.setTableName(Data::tableName(metaObject));
-
-    return field;
-}
-
-bool DataPrivate::isRelationProperty(const QMetaProperty &property, const QMetaObject &metaObject)
-{
-    return (QString(property.typeName()).startsWith("QList<"));
-}
-
-QSqlField DataPrivate::relationFieldFromProperty(const QMetaProperty &property, const QMetaObject &metaObject, bool includeTable)
-{
-    QSqlField field;
-    field.setName(fieldNameFromPropertyName(property.name()));
-    field.setRequired(property.isRequired());
-
+    QStringList extraFields;
     {
-        QString type(property.typeName());
-        type.remove("QList<");
-        type.remove('>');
-        field.setMetaType(QMetaType::fromName(type.toLatin1()));
-    }
+        QString field;
+        for (const QChar &c : str) {
+            if (c != ' ' && c != ',')
+                field.append(c);
 
-    if (includeTable)
-        field.setTableName(Data::tableName(metaObject));
-
-    return field;
-}
-
-QSqlRelation DataPrivate::relationFromProperty(const QMetaProperty &property, const QMetaObject &metaObject)
-{
-    const QMetaObject *object = nullptr;
-    {
-        QString name = property.typeName();
-        if (name.startsWith("QList<")) {
-            name.remove(0, 6);
-            name.chop(1);
-            const QMetaType type = QMetaType::fromName(name.toLatin1());
-            object = type.metaObject();
+            if (c == ')') {
+                extraFields.append(field);
+                field.clear();
+            }
         }
     }
 
-    if (object) {
-        QString table = Data::tableName(*object);
-        QString index = Data::foreignFieldName(*object);
-        QString display = Data::displayFieldName(*object);
-        return QSqlRelation(table, index, display);
-    } else
-        return QSqlRelation();
-}
+    QList<QSqlField> fields;
 
-QSqlField DataPrivate::fieldFromProperty(const QMetaProperty &property, const QMetaObject &object, bool includeTable)
-{
-    QSqlField field;
-    field.setName(fieldNameFromPropertyName(property.name()));
-    field.setMetaType(property.metaType());
-    field.setRequired(property.isRequired());
+    QRegularExpression regExp("^(?<name>[a-zA-Z_]+)\\((?<type>[A-Za-z_]+),?(?<options>[a-z, ]*)\\)$");
 
-    if (includeTable)
-        field.setTableName(Data::tableName(object));
+    for (const QString &extraField : extraFields) {
+        QRegularExpressionMatch match = regExp.match(extraField);
 
-    return field;
-}
+        if (match.hasMatch()) {
+            QSqlField field(match.captured("name"), QMetaType::fromName(match.captured("type").toLatin1()), tableName);
 
-QList<QMetaProperty> DataPrivate::fieldProperties(const QMetaObject &metaObject, FieldType type)
-{
-    QList<QMetaProperty> properties;
+            if (match.hasCaptured("options")) {
+                const QStringList options = match.captured("options").remove(' ').split(',', Qt::SkipEmptyParts);
+                for (const QString &option : options) {
+                    if (option == "required")
+                        field.setRequired(true);
+                }
+            }
 
-    for (int i(0); i < metaObject.propertyCount(); ++i) {
-        const QMetaProperty property = metaObject.property(i);
-
-        if (!property.isReadable() || !property.isStored())
-            continue;
-
-        const QMetaObject *object = property.metaType().metaObject();
-        if (!object && type == StandardField)
-            properties.append(property);
-        else if (object && type == ForeignField)
-            properties.append(property);
+            fields.append(field);
+        } else
+            qWarning().noquote() << Q_FUNC_INFO << ": unable to process field " << extraField << ", check the syntax on " << context;
     }
 
-    return properties;
+    return fields;
 }
 
 }

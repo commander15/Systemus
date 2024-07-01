@@ -2,12 +2,13 @@
 #define SYSTEMUS_PRIVILEGE_H
 
 #include <SystemusCore/global.h>
-#include <SystemusCore/data.h>
+#include <SystemusCore/authorizationdata.h>
 #include <SystemusCore/permission.h>
 
 
 namespace Systemus {
 
+class PrivilegePrivate;
 class SYSTEMUS_CORE_EXPORT Privilege : public AuthorizationData
 {
     Q_GADGET
@@ -26,15 +27,16 @@ public:
     QJsonObject toJsonObject() const override;
 
 private:
-    SYSTEMUS_DATA_METHODS(Privilege)
+    S_DATA(Privilege)
 };
 
+class PrivilegedDataPrivate;
 class SYSTEMUS_CORE_EXPORT PrivilegedData : public AuthorizationData
 {
     Q_GADGET
 
 public:
-    //PrivilegedData();
+    PrivilegedData();
     //PrivilegedData(const PrivilegedData &other);
     virtual ~PrivilegedData();
 
@@ -48,8 +50,10 @@ public:
 
     bool getExtras() override;
 
+    QJsonObject toJsonObject() const override;
+
 protected:
-    PrivilegedData(AuthorizationDataPrivate *data);
+    PrivilegedData(PrivilegedDataPrivate *data);
 };
 
 }

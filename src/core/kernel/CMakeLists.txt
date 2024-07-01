@@ -10,5 +10,6 @@ target_headers(core
 
 target_sources(core
     PRIVATE
+        global.cpp
         debug.cpp
 )

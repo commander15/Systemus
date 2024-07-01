@@ -13,6 +13,9 @@ class SYSTEMUS_CORE_EXPORT Role : public PrivilegedData
 public:
     Role();
     Role(const Role &other);
+
+private:
+    S_DATA(Role)
 };
 
 }

@@ -6,10 +6,10 @@
 
 namespace Systemus {
 
-class RolePrivate : public PrivilegedDataPrivate<Role>
+class RolePrivate : public PrivilegedDataPrivate
 {
 public:
-    RolePrivate() = default;
+    RolePrivate();
     RolePrivate(const RolePrivate &other) = default;
 };
 

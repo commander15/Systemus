@@ -20,6 +20,9 @@ public:
 
     QString name() const;
     void setName(const QString &name);
+
+private:
+    S_DATA(UserProfile)
 };
 
 class SYSTEMUS_CORE_EXPORT User : public PrivilegedData
@@ -27,7 +30,7 @@ class SYSTEMUS_CORE_EXPORT User : public PrivilegedData
     Q_GADGET
     Q_PROPERTY(QString password READ password WRITE setPassword)
     Q_PROPERTY(bool active READ isActive WRITE setActive)
-    Q_CLASSINFO("fields", "profile_id, role_id")
+    Q_CLASSINFO("fields", "profile_id(int), role_id(int)")
 
 public:
     User();
@@ -45,7 +48,14 @@ public:
     bool hasRole(const QString &name) const;
     Role role() const;
 
+    QJsonObject toJsonObject() const override;
+
+    bool getExtras() override;
+
     bool insert() override;
+
+private:
+    S_DATA(User)
 };
 
 }

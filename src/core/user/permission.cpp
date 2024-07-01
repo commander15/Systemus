@@ -1,20 +1,7 @@
 #include "permission.h"
 
+#include <SystemusCore/private/authorizationdata_p.h>
+
 namespace Systemus {
-
-Permission::Permission()
-{
-    init<Permission>();
-}
-
-Permission::Permission(const Permission &other) :
-    AuthorizationData(other)
-{
-    init<Permission>();
-}
-
-Permission::~Permission()
-{
-}
 
 }

@@ -12,114 +12,62 @@ namespace Systemus {
 class DataPrivate : public QSharedData
 {
 public:
-    enum FieldType {
-        StandardField,
-        ForeignField
-    };
-
     enum DataType {
         DefaultDataType,
         AccessControlDataType
     };
     
-    DataPrivate() = default;
+    DataPrivate();
     DataPrivate(const DataPrivate &other) = default;
     
-    virtual bool equalsTo(const DataPrivate *other) const
-    { return id == other->id; }
+    virtual bool equalsTo(const DataPrivate *other) const;
     
     virtual void clear()
     {
         id = 0;
+        values.clear();
         lastError = QSqlError();
     }
-
-    static QString tableNameFromClassName(const QString &className);
-    static QString fieldNameFromPropertyName(const QString &propertyName);
-
-    static bool isStandardFieldProperty(const QMetaProperty &property, const QMetaObject &metaObject);
-    static QSqlField standardFieldFromProperty(const QMetaProperty &property, const QMetaObject &metaObject, bool includeTable);
-
-    static bool isForeignProperty(const QMetaProperty &property, const QMetaObject &metaObject);
-    static QSqlField foreignFieldFromProperty(const QMetaProperty &property, const QMetaObject &metaObject, bool includeTable);
-
-    static bool isRelationProperty(const QMetaProperty &property, const QMetaObject &metaObject);
-    static QSqlField relationFieldFromProperty(const QMetaProperty &property, const QMetaObject &metaObject, bool includeTable);
-    static QSqlRelation relationFromProperty(const QMetaProperty &property, const QMetaObject &metaObject);
-
-    static QSqlField fieldFromProperty(const QMetaProperty &property, const QMetaObject &object, bool includeTable);
-    static QList<QMetaProperty> fieldProperties(const QMetaObject &metaObject, FieldType type);
     
     virtual inline DataType dataType() const
     { return DefaultDataType; }
     
     int id;
-
     QVariantHash values;
-    
+
+    bool initialized;
+
     mutable QSqlError lastError;
-
-    bool copyPropertiesOnAssignment = true;
 };
 
-class AuthorizationDataPrivate : public DataPrivate
+class DataInfoPrivate : public QSharedData
 {
 public:
-    AuthorizationDataPrivate() = default;
-    AuthorizationDataPrivate(const AuthorizationDataPrivate &other) = default;
-    
-    virtual bool equalsTo(const DataPrivate *o) const override
-    {
-        const AuthorizationDataPrivate *other = static_cast<const AuthorizationDataPrivate *>(o);
+    DataInfoPrivate();
+    DataInfoPrivate(const DataInfoPrivate &other) = default;
+    ~DataInfoPrivate();
 
-        return name == other->name
-               && description == other->description
-               && creationDate == other->creationDate
-               && creationTime == other->creationTime
-               && DataPrivate::equalsTo(o);
-    }
-    
-    virtual void clear() override
-    {
-        name.clear();
-        description.clear();
-        creationDate = QDate();
-        creationTime = QTime();
-        DataPrivate::clear();
-    }
-    
-    inline DataType dataType() const override
-    { return AccessControlDataType; }
-    
-    QString name;
-    QString description;
+    QMetaProperty property(const QString &name) const;
+    QMetaClassInfo classInfo(const QString &name) const;
 
-    QDate creationDate;
-    QTime creationTime;
-};
+    void update(const QMetaObject *object);
 
-class IssuedAuthorizationDataPrivate : public DataPrivate
-{
-public:
-    IssuedAuthorizationDataPrivate() = default;
-    IssuedAuthorizationDataPrivate(const IssuedAuthorizationDataPrivate &other) = default;
+    bool equals(const DataInfoPrivate &other) const;
 
-    virtual bool equalsTo(const DataPrivate *o) const override
-    {
-        const IssuedAuthorizationDataPrivate *other = static_cast<const IssuedAuthorizationDataPrivate *>(o);
+    static QString tableNameFromClassName(const QString &className);
+    static QString fieldNameFromPropertyName(const QString &propertyName);
+    static QSqlField fieldFromProperty(const QMetaProperty &property, const QMetaObject *object);
+    static QList<QSqlField> fieldsFromString(const QString &str, const QString &tableName, const QString &context);
 
-        return refData == other->refData
-               && active == other->active
-               && issueDate == other->issueDate
-               && issueTime == other->issueTime
-               && DataPrivate::equalsTo(o);
-    }
+    int idFieldIndex;
+    int userFieldIndex;
+    QList<int> searchFieldIndexes;
 
-    AuthorizationData refData;
+    QString tableName;
+    QSqlRecord tableRecord;
 
-    bool active;
-    QDate issueDate;
-    QTime issueTime;
+    QVector<QMetaProperty> metaFields;
+    const QMetaObject *metaObject;
 };
 
 }
