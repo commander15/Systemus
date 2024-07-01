@@ -22,6 +22,10 @@ install(EXPORT SystemusCoreTargets NAMESPACE Systemus:: DESTINATION lib/cmake/Sy
 if (Systemus_BUILD_WIDGETS)
     add_subdirectory(widgets)
 
+    if (Systemus_BUILD_TOOL)
+        add_subdirectory(permgen)
+    endif()
+
     install(EXPORT SystemusWidgetsTargets NAMESPACE Systemus:: DESTINATION lib/cmake/Systemus)
 endif()
 
