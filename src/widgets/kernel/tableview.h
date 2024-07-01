@@ -35,11 +35,16 @@ public:
     { return Data::fromSqlRecord<T>(recordAt(pos)); }
     QSqlRecord recordAt(const QPoint &pos) const;
 
+    Q_SIGNAL void recordDoubleClicked(const QSqlRecord &record);
+
     QSqlQueryModel *model() const;
     void setModel(QSqlQueryModel *model);
 
 protected:
     Q_SLOT virtual void prepare();
+
+private:
+    Q_SLOT void processDoubleClick(const QModelIndex &index);
 };
 
 }

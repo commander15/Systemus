@@ -5,6 +5,11 @@
 #include <SystemusCore/authenticator.h>
 #include <SystemusCore/user.h>
 
+#include <QtWidgets/qmessagebox.h>
+
+#include <QtGui/qtextcursor.h>
+#include <QtGui/qtexttable.h>
+
 namespace Systemus {
 
 StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *parent) :
@@ -21,9 +26,14 @@ StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *pare
     connect(ui->actionSearch, &QAction::triggered, this, &StandardUserInterface::search);
 
     connect(ui->refreshButton, &QAbstractButton::clicked, this, &StandardUserInterface::refresh);
+    connect(ui->addButton, &QAbstractButton::clicked, this, &StandardUserInterface::addData);
+    connect(ui->editButton, &QAbstractButton::clicked, this, &StandardUserInterface::editData);
+    connect(ui->deleteButton, &QAbstractButton::clicked, this, &StandardUserInterface::deleteData);
+    connect(ui->printButton, &QAbstractButton::clicked, this, &StandardUserInterface::printData);
 
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->tableView->setModel(&d->model);
+    connect(ui->tableView, &TableView::recordDoubleClicked, this, &StandardUserInterface::showRecord);
     connect(ui->tableView, &QWidget::customContextMenuRequested, this, &StandardUserInterface::showContextMenu);
 }
 
@@ -49,27 +59,38 @@ bool StandardUserInterface::refresh()
 
 void StandardUserInterface::showData()
 {
-    //
+    showRecord(ui->tableView->currentRecord());
 }
 
 void StandardUserInterface::addData()
 {
-    //
+    if (!addRecord(ui->tableView->currentRecord()))
+        QMessageBox::warning(this, tr("Error"), tr("Error during data add !"));
 }
 
 void StandardUserInterface::editData()
 {
-    //
+    if (!editRecord(ui->tableView->currentRecord()))
+        QMessageBox::warning(this, tr("Error"), tr("Error during data update !"));
 }
 
 void StandardUserInterface::deleteData()
 {
-    //
+    QMessageBox::StandardButton answer;
+    answer = QMessageBox::question(this, tr("Deletion"), tr("Do you realy want to delete these records ?"));
+    if (answer == QMessageBox::Yes && !deleteRecords(ui->tableView->selectedRecords()))
+        QMessageBox::warning(this, tr("Error"), tr("Error during data deletion !"));
 }
 
 void StandardUserInterface::printData()
 {
-    //
+    QTextDocument *doc = new QTextDocument(this);
+
+    for (const QSqlRecord &record : ui->tableView->selectedRecords())
+        fillDocumentForPrinting(doc, record);
+
+    emit printingRequested(doc);
+    doc->deleteLater();
 }
 
 TableView *StandardUserInterface::tableView() const
@@ -87,6 +108,12 @@ DataModel *StandardUserInterface::dataModel() const
 {
     S_D(StandardUserInterface);
     return &d->model;
+}
+
+QAction *StandardUserInterface::printAction() const
+{
+    S_D(StandardUserInterface);
+    return d->printAction;
 }
 
 bool StandardUserInterface::supportAction(int action) const
@@ -118,6 +145,73 @@ bool StandardUserInterface::supportAction(int action) const
     default:
         return false;
     }
+}
+
+void StandardUserInterface::showRecord(const QSqlRecord &record)
+{
+    //
+}
+
+bool StandardUserInterface::addRecord(const QSqlRecord &record)
+{
+    return false;
+}
+
+bool StandardUserInterface::editRecord(const QSqlRecord &record)
+{
+    return false;
+}
+
+bool StandardUserInterface::deleteRecords(const QList<QSqlRecord> &records)
+{
+    return false;
+}
+
+void StandardUserInterface::fillDocumentForPrinting(QTextDocument *document, const QSqlRecord &record)
+{
+    QTextCursor cursor(document);
+
+    QTextTable *table;
+    {
+        QTextTableFormat tableFormat;
+        tableFormat.setBorderCollapse(true);
+        tableFormat.setHeaderRowCount(1);
+
+        table = cursor.insertTable(2, record.count());
+    }
+
+    QTextBlockFormat blockFormat;
+    blockFormat.setAlignment(Qt::AlignCenter);
+
+    QTextCharFormat charFormat;
+
+    for (int i(0); i < record.count(); ++i) {
+        QTextCursor cursor;
+
+        cursor = table->cellAt(0, i).firstCursorPosition();
+        cursor.setBlockFormat(blockFormat);
+        cursor.insertText(record.fieldName(i), charFormat);
+
+        cursor = table->cellAt(1, i).firstCursorPosition();
+        cursor.setBlockFormat(blockFormat);
+        cursor.insertText(record.value(i).toString(), charFormat);
+    }
+}
+
+void StandardUserInterface::showRecordsContextMenu(const QList<QSqlRecord> &records, const QPoint &pos)
+{
+    S_D(StandardUserInterface);
+
+    if (records.isEmpty())
+        return;
+
+    bool single = records.size() == 1;
+    d->showAction->setEnabled(supportAction(UserInterface::ShowAction) && single);
+    d->editAction->setEnabled(supportAction(UserInterface::EditAction) && single);
+    d->deleteAction->setEnabled(supportAction(UserInterface::DeleteAction));
+    d->printAction->setEnabled(supportAction(UserInterface::PrintAction));
+
+    d->menu->popup(pos);
 }
 
 void StandardUserInterface::initUi()
@@ -179,20 +273,13 @@ QVariant StandardUserInterface::processAction(int action, const QVariant &data)
 
 void StandardUserInterface::showContextMenu(const QPoint &pos)
 {
-    S_D(StandardUserInterface);
-
-    d->refreshUi();
-
-    QSqlRecord record = ui->tableView->recordAt(pos);
-
-    if (!record.isEmpty()) {
-        QPoint cursorPos = ui->tableView->viewport()->mapTo(ui->tableView, pos);
-        d->menu->popup(ui->tableView->mapToGlobal(cursorPos));
-    }
+    QPoint cursorPos = ui->tableView->viewport()->mapTo(ui->tableView, pos);
+    ui->tableView->setCurrentIndex(ui->tableView->indexAt(pos));
+    showRecordsContextMenu(ui->tableView->selectedRecords(), cursorPos);
 }
 
-StandardUserInterfacePrivate::StandardUserInterfacePrivate(const QByteArray &id, StandardUserInterface *qq) :
-    UserInterfacePrivate(id, qq)
+StandardUserInterfacePrivate::StandardUserInterfacePrivate(const QByteArray &id, StandardUserInterface *q) :
+    UserInterfacePrivate(id, q)
 {
 }
 
@@ -200,10 +287,12 @@ void StandardUserInterfacePrivate::refreshUi()
 {
     S_Q(StandardUserInterface);
 
-    showAction->setEnabled(q->supportAction(UserInterface::ShowAction));
-    editAction->setEnabled(q->supportAction(UserInterface::EditAction));
-    deleteAction->setEnabled(q->supportAction(UserInterface::DeleteAction));
-    printAction->setEnabled(q->supportAction(UserInterface::PrintAction));
+    bool selected = q->ui->tableView->currentIndex().isValid();
+
+    showAction->setEnabled(q->supportAction(UserInterface::ShowAction) && selected);
+    editAction->setEnabled(q->supportAction(UserInterface::EditAction) && selected);
+    deleteAction->setEnabled(q->supportAction(UserInterface::DeleteAction) && selected);
+    printAction->setEnabled(q->supportAction(UserInterface::PrintAction) && selected);
 }
 
 void StandardUserInterfacePrivate::translateUi()

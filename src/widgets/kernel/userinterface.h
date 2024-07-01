@@ -5,6 +5,8 @@
 
 #include <QtWidgets/qwidget.h>
 
+class QTextDocument;
+
 namespace Systemus {
 
 class UserInterfacePrivate;
@@ -47,6 +49,8 @@ public:
     Q_SIGNAL void actionSupportUpdated(InterfaceAction action, bool supported);
 
     QAction *interfaceAction() const;
+
+    Q_SIGNAL void printingRequested(QTextDocument *document);
 
     virtual InterfaceType interfaceType() const
     { return DefaultInterface; }

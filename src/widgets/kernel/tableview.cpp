@@ -10,6 +10,8 @@ TableView::TableView(QWidget *parent) :
     setSelectionMode(MultiSelection);
     setSelectionBehavior(SelectRows);
     setEditTriggers(NoEditTriggers);
+
+    connect(this, &QAbstractItemView::doubleClicked, this, &TableView::processDoubleClick);
 }
 
 TableView::~TableView()
@@ -69,6 +71,11 @@ void TableView::prepare()
     QHeaderView *view = horizontalHeader();
     for (int i(1); i < view->count(); ++i)
         view->setSectionResizeMode(i, QHeaderView::Stretch);
+}
+
+void TableView::processDoubleClick(const QModelIndex &index)
+{
+    emit recordDoubleClicked(model()->record(index.row()));
 }
 
 }

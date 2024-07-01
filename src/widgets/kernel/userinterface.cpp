@@ -143,7 +143,6 @@ QAction *UserInterfacePrivate::action() const
 
     if (!_action) {
         _action = new QAction(q->interfaceIcon(), q->interfaceTitle(), q);
-        _action->setCheckable(true);
         QObject::connect(q, &UserInterface::interfaceIconChanged, _action, &QAction::setIcon);
         QObject::connect(q, &UserInterface::interfaceTitleChanged, _action, &QAction::setText);
     }

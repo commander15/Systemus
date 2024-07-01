@@ -1,6 +1,10 @@
 target_headers(widgets
     PUBLIC
         global.h
+        interfaceholder.h
+        toolbar.h
+        centralwidget.h
+        interfacestack.h
         userinterface.h
         standarduserinterface.h
         tableview.h
@@ -11,6 +15,10 @@ target_headers(widgets
 
 target_sources(widgets
     PRIVATE
+        interfaceholder.cpp
+        toolbar.cpp
+        centralwidget.cpp
+        interfacestack.cpp
         userinterface.cpp
         standarduserinterface.cpp
         tableview.cpp

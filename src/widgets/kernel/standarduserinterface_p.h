@@ -18,7 +18,7 @@ class StandardUserInterfacePrivate : public UserInterfacePrivate
     Q_DECLARE_TR_FUNCTIONS(StandardUserInterface)
 
 public:
-    StandardUserInterfacePrivate(const QByteArray &id, StandardUserInterface *qq);
+    StandardUserInterfacePrivate(const QByteArray &id, StandardUserInterface *q);
 
     void refreshUi();
     void translateUi();
