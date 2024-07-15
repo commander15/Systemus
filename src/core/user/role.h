@@ -14,10 +14,14 @@ public:
     Role();
     Role(const Role &other);
 
+    Role &operator=(const Role &other);
+
 private:
     S_DATA(Role)
 };
 
 }
+
+Q_DECLARE_METATYPE(Systemus::Role)
 
 #endif // SYSTEMUS_ROLE_H

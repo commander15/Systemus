@@ -11,7 +11,7 @@ InterfaceStack::InterfaceStack(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    connect(ui->stackedWidget, &QStackedWidget::currentChanged, this, &InterfaceStack::currentIndexChanged);
+    connect(ui->stackedWidget, &QStackedWidget::currentChanged, this, &InterfaceStack::processWidgetChange);
 }
 
 InterfaceStack::~InterfaceStack()
@@ -26,22 +26,22 @@ UserInterface *InterfaceStack::currentInterface() const
 
 int InterfaceStack::currentIndex() const
 {
-    return ui->stackedWidget->currentIndex();
+    return ui->stackedWidget->currentIndex() + 1;
 }
 
 void InterfaceStack::setCurrentIndex(int index)
 {
-    ui->stackedWidget->setCurrentIndex(index);
+    ui->stackedWidget->setCurrentIndex(index + 1);
 }
 
 UserInterface *InterfaceStack::interface(int index) const
 {
-    return static_cast<UserInterface *>(ui->stackedWidget->widget(index));
+    return static_cast<UserInterface *>(ui->stackedWidget->widget(index + 1));
 }
 
 int InterfaceStack::count() const
 {
-    return ui->stackedWidget->count();
+    return ui->stackedWidget->count() - 1;
 }
 
 int InterfaceStack::addInterface(UserInterface *interface)
@@ -53,7 +53,7 @@ int InterfaceStack::addInterface(UserInterface *interface)
 int InterfaceStack::insertInterface(int index, UserInterface *interface)
 {
     connect(interface->interfaceAction(), &QAction::triggered, this, &InterfaceStack::showInterface);
-    return ui->stackedWidget->insertWidget(index, interface);
+    return ui->stackedWidget->insertWidget(index + 1, interface);
 }
 
 void InterfaceStack::removeInterface(UserInterface *interface)
@@ -64,7 +64,7 @@ void InterfaceStack::removeInterface(UserInterface *interface)
 
 int InterfaceStack::indexOf(UserInterface *interface) const
 {
-    return ui->stackedWidget->indexOf(interface);
+    return ui->stackedWidget->indexOf(interface) - 1;
 }
 
 void InterfaceStack::showInterface()
@@ -76,6 +76,11 @@ void InterfaceStack::showInterface()
             break;
         }
     }
+}
+
+void InterfaceStack::processWidgetChange(int index)
+{
+    emit currentIndexChanged(index - 1);
 }
 
 }

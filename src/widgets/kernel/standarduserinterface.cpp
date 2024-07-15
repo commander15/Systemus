@@ -33,7 +33,7 @@ StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *pare
 
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->tableView->setModel(&d->model);
-    connect(ui->tableView, &TableView::recordDoubleClicked, this, &StandardUserInterface::showRecord);
+    connect(ui->tableView, &TableView::dataDoubleClicked, this, &StandardUserInterface::showData);
     connect(ui->tableView, &QWidget::customContextMenuRequested, this, &StandardUserInterface::showContextMenu);
 }
 
@@ -46,8 +46,7 @@ void StandardUserInterface::search()
 {
     S_D(StandardUserInterface);
 
-    QString field = d->model.tableName();
-    d->model.setFilter(field + " = '" + ui->searchInput->text() + '\'');
+    d->model.setSearchQuery(ui->searchInput->text());
     d->model.select();
 }
 
@@ -59,35 +58,53 @@ bool StandardUserInterface::refresh()
 
 void StandardUserInterface::showData()
 {
-    showRecord(ui->tableView->currentRecord());
+    const Data data = ui->tableView->currentData();
+    data.dumpInfos();
 }
 
 void StandardUserInterface::addData()
 {
-    if (!addRecord(ui->tableView->currentRecord()))
+    Data data;
+    if (data.insert())
+        refresh();
+    else
         QMessageBox::warning(this, tr("Error"), tr("Error during data add !"));
 }
 
 void StandardUserInterface::editData()
 {
-    if (!editRecord(ui->tableView->currentRecord()))
+    Data data = ui->tableView->currentData();
+    if (data.update())
+        refresh();
+    else
         QMessageBox::warning(this, tr("Error"), tr("Error during data update !"));
 }
 
 void StandardUserInterface::deleteData()
 {
     QMessageBox::StandardButton answer;
-    answer = QMessageBox::question(this, tr("Deletion"), tr("Do you realy want to delete these records ?"));
-    if (answer == QMessageBox::Yes && !deleteRecords(ui->tableView->selectedRecords()))
-        QMessageBox::warning(this, tr("Error"), tr("Error during data deletion !"));
+    answer = QMessageBox::question(this, tr("Deletion"), tr("Do you realy want to delete these data ?"));
+    if (answer == QMessageBox::Yes) {
+        QList<Data> selectedData = ui->tableView->selectedData();
+        for (Data &data : selectedData)
+            data.deleteData();
+        refresh();
+    }
 }
 
 void StandardUserInterface::printData()
 {
     QTextDocument *doc = new QTextDocument(this);
 
-    for (const QSqlRecord &record : ui->tableView->selectedRecords())
-        fillDocumentForPrinting(doc, record);
+    for (const Data &data : ui->tableView->selectedData()) {
+        fillDocumentForPrinting(doc, data);
+
+        if (true) {
+            QTextCursor cursor(doc);
+            cursor.movePosition(QTextCursor::End);
+            cursor.insertBlock();
+        }
+    }
 
     emit printingRequested(doc);
     doc->deleteLater();
@@ -147,28 +164,12 @@ bool StandardUserInterface::supportAction(int action) const
     }
 }
 
-void StandardUserInterface::showRecord(const QSqlRecord &record)
+void StandardUserInterface::fillDocumentForPrinting(QTextDocument *document, const Data &data)
 {
-    //
-}
+    S_D(StandardUserInterface);
 
-bool StandardUserInterface::addRecord(const QSqlRecord &record)
-{
-    return false;
-}
+    const DataInfo info = data.dataInfo();
 
-bool StandardUserInterface::editRecord(const QSqlRecord &record)
-{
-    return false;
-}
-
-bool StandardUserInterface::deleteRecords(const QList<QSqlRecord> &records)
-{
-    return false;
-}
-
-void StandardUserInterface::fillDocumentForPrinting(QTextDocument *document, const QSqlRecord &record)
-{
     QTextCursor cursor(document);
 
     QTextTable *table;
@@ -177,41 +178,45 @@ void StandardUserInterface::fillDocumentForPrinting(QTextDocument *document, con
         tableFormat.setBorderCollapse(true);
         tableFormat.setHeaderRowCount(1);
 
-        table = cursor.insertTable(2, record.count());
+        table = cursor.insertTable(info.displayCount() + 1, 2);
+        table->mergeCells(0, 0, 1, 2);
     }
+    {
+        QTextBlockFormat blockFormat;
+        blockFormat.setAlignment(Qt::AlignCenter);
 
-    QTextBlockFormat blockFormat;
-    blockFormat.setAlignment(Qt::AlignCenter);
+        QTextCursor cursor = table->cellAt(0, 0).firstCursorPosition();
+        cursor.setBlockFormat(blockFormat);
+        cursor.insertText(info.metaObject()->className());
+    }
 
     QTextCharFormat charFormat;
 
-    for (int i(0); i < record.count(); ++i) {
+    for (int i(0); i < info.displayCount(); ++i) {
         QTextCursor cursor;
 
-        cursor = table->cellAt(0, i).firstCursorPosition();
-        cursor.setBlockFormat(blockFormat);
-        cursor.insertText(record.fieldName(i), charFormat);
+        cursor = table->cellAt(i, 0).firstCursorPosition();
+        cursor.insertText(info.fieldName(i), charFormat);
 
-        cursor = table->cellAt(1, i).firstCursorPosition();
-        cursor.setBlockFormat(blockFormat);
-        cursor.insertText(record.value(i).toString(), charFormat);
+        cursor = table->cellAt(i, 1).firstCursorPosition();
+        cursor.insertText(data.property(info.displayPropertyName(i)).toString(), charFormat);
     }
 }
 
-void StandardUserInterface::showRecordsContextMenu(const QList<QSqlRecord> &records, const QPoint &pos)
+void StandardUserInterface::showDataContextMenu(const QList<Data> &data, const QPoint &pos)
 {
     S_D(StandardUserInterface);
 
-    if (records.isEmpty())
+    if (data.isEmpty())
         return;
 
-    bool single = records.size() == 1;
+    bool single = data.size() == 1;
     d->showAction->setEnabled(supportAction(UserInterface::ShowAction) && single);
     d->editAction->setEnabled(supportAction(UserInterface::EditAction) && single);
     d->deleteAction->setEnabled(supportAction(UserInterface::DeleteAction));
     d->printAction->setEnabled(supportAction(UserInterface::PrintAction));
 
-    d->menu->popup(pos);
+    d->menu->popup(QCursor::pos());
 }
 
 void StandardUserInterface::initUi()
@@ -220,9 +225,6 @@ void StandardUserInterface::initUi()
 
     if (d->model.rowCount() == 0)
         d->model.select();
-
-    for (int i(d->model.fieldCount()); i < d->model.columnCount(); ++i)
-        ui->tableView->hideColumn(i);
 
     d->refreshUi();
 }
@@ -275,7 +277,7 @@ void StandardUserInterface::showContextMenu(const QPoint &pos)
 {
     QPoint cursorPos = ui->tableView->viewport()->mapTo(ui->tableView, pos);
     ui->tableView->setCurrentIndex(ui->tableView->indexAt(pos));
-    showRecordsContextMenu(ui->tableView->selectedRecords(), cursorPos);
+    showDataContextMenu(ui->tableView->selectedData(), cursorPos);
 }
 
 StandardUserInterfacePrivate::StandardUserInterfacePrivate(const QByteArray &id, StandardUserInterface *q) :

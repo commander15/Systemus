@@ -22,7 +22,8 @@ public:
         AddAction,
         EditAction,
         DeleteAction,
-        PrintAction
+        PrintAction,
+        UserAction = 255
     };
 
     enum InterfaceType {
@@ -46,7 +47,7 @@ public:
 
     virtual bool supportAction(int action) const;
     QVariant trigger(int action, const QVariant &data = QVariant());
-    Q_SIGNAL void actionSupportUpdated(InterfaceAction action, bool supported);
+    Q_SIGNAL void actionSupportUpdated(int action, bool supported);
 
     QAction *interfaceAction() const;
 

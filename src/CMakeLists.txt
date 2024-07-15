@@ -20,9 +20,13 @@ endif()
 install(EXPORT SystemusCoreTargets NAMESPACE Systemus:: DESTINATION lib/cmake/Systemus)
 
 if (Systemus_BUILD_WIDGETS)
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
+
     add_subdirectory(widgets)
 
     if (Systemus_BUILD_TOOL)
+        add_subdirectory(manager)
         add_subdirectory(permgen)
     endif()
 

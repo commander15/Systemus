@@ -6,7 +6,7 @@
 namespace Systemus {
 
 DataModel::DataModel(QObject *parent) :
-    QSqlQueryModel(parent),
+    QAbstractTableModel(parent),
     d_ptr(new DataModelPrivate(this))
 {
 }
@@ -15,73 +15,33 @@ DataModel::~DataModel()
 {
 }
 
-QString DataModel::tableName() const
+Data DataModel::data(int row) const
 {
     S_D(const DataModel);
-    return d->tableName;
+    return d->data.at(row);
 }
 
-void DataModel::setTableName(const QString &name)
-{
-    S_D(DataModel);
-    d->tableName = name;
-}
-
-int DataModel::fieldCount() const
+DataInfo DataModel::dataInfo() const
 {
     S_D(const DataModel);
-    return d->tableRecord.count();
+    return d->info;
 }
 
-int DataModel::addField(const QString &name, QMetaType::Type type, const QString &table)
+void DataModel::setDataInfo(const DataInfo &info)
 {
     S_D(DataModel);
-    d->tableRecord.append(QSqlField(name, QMetaType(type), table));
-    return d->tableRecord.count() - 1;
+    d->info = info;
 }
 
-void DataModel::insertField(int pos, const QString &name, QMetaType::Type type, const QString &table)
+bool DataModel::search(const QString &query)
 {
-    S_D(DataModel);
-    d->tableRecord.insert(pos, QSqlField(name, QMetaType(type), table));
+    setSearchQuery(query);
+    return select();
 }
 
-void DataModel::replaceField(int pos, const QString &name, QMetaType::Type type, const QString &table)
+void DataModel::setSearchQuery(const QString &query)
 {
-    S_D(DataModel);
-    d->tableRecord.replace(pos, QSqlField(name, QMetaType(type), table));
-}
-
-int DataModel::relationCount() const
-{
-    S_D(const DataModel);
-    return d->tableRelations.size();
-}
-
-int DataModel::addRelation(const QString &table)
-{
-    return addRelation(table, "id", table + "_id");
-}
-
-int DataModel::addRelation(const QString &table, const QString &foreignIndex)
-{
-    return addRelation(table, "id", foreignIndex);
-}
-
-int DataModel::addRelation(const QString &table, const QString &index, const QString &foreignIndex)
-{
-    S_D(DataModel);
-    d->tableRelations.insert(foreignIndex, QSqlRelation(table, index, QString()));
-    return d->tableRelations.size() - 1;
-}
-
-void DataModel::setTable(const QString &table)
-{
-    clear();
-
-    S_D(DataModel);
-    d->tableName = table;
-    d->tableRecord = QSqlDatabase::database().record(table);
+    qDebug() << Q_FUNC_INFO << ": unimplemented !";
 }
 
 QString DataModel::filter() const
@@ -98,7 +58,8 @@ void DataModel::setFilter(const QString &filter)
 
 void DataModel::sort(int column, Qt::SortOrder order)
 {
-    setSort(column, order);
+    S_D(DataModel);
+    d->setSort(column, order);
     select();
 }
 
@@ -108,70 +69,117 @@ void DataModel::setSort(int column, Qt::SortOrder order)
     d->setSort(column, order);
 }
 
+QSqlError DataModel::lastError() const
+{
+    S_D(const DataModel);
+    return d->lastError;
+}
+
 bool DataModel::select()
+{
+    beginResetModel();
+
+    S_D(DataModel);
+    d->data = d->info.find(*d, &d->lastError);
+
+    endResetModel();
+    return !d->lastError.isValid();
+}
+
+bool DataModel::selectRow(int row)
 {
     S_D(DataModel);
 
-    bool ok;
-    setQuery(Data::execCachedQuery(selectStatement(), &ok));
-    return ok;
+    const Data data = d->data.at(row);
+
+    DataSearch query = *d;
+    query.filter(QStringLiteral("%1 = %2").arg(d->info.idFieldName()).arg(data.id()));
+
+    QList<Data> selectedData = d->info.find(query, &d->lastError);
+    if (!data.isEmpty()) {
+        d->data.replace(row, selectedData.constFirst());
+        emit dataChanged(index(row, 0), index(row, d->info.displayCount()));
+    }
+
+    return !d->lastError.isValid();
 }
 
 void DataModel::clear()
 {
+    beginResetModel();
+
     S_D(DataModel);
-    d->tableName.clear();
-    d->tableRecord.clear();
-    d->tableRelations.clear();
-    QSqlQueryModel::clear();
+    d->info = DataInfo();
+    d->data.clear();
+    d->clear();
+
+    endResetModel();
 }
 
-QString DataModel::selectStatement() const
+QVariant DataModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     S_D(const DataModel);
 
-    QString statement;
+    switch (role) {
+    case Qt::DisplayRole:
+    case Qt::EditRole:
+        return (orientation == Qt::Horizontal ? d->columnName(section) : QString::number(d->itemNumber(section)));
 
-    {
-        QStringList fields;
-
-        for (int i(0); i < d->tableRecord.count(); ++i) {
-            const QSqlField field = d->tableRecord.field(i);
-
-            QString name;
-            if (!field.tableName().isEmpty())
-                name.append(field.tableName());
-            else
-                name.append(d->tableName);
-            name.append('.' + field.name());
-
-            fields.append(name);
-        }
-
-        fields.append(d->tableRelations.keys());
-
-        statement.append("SELECT " + fields.join(", ") + " FROM " + d->tableName);
+    default:
+        return QAbstractItemModel::headerData(section, orientation, role);
     }
+}
 
-    const QStringList fields = d->tableRelations.keys();
-    for (const QString &field : fields) {
-        const QSqlRelation relation = d->tableRelations.value(field);
-        statement.append(QStringLiteral(" LEFT JOIN %1 ON (%1.%2 = %3)").arg(relation.tableName(), relation.indexColumn(), field));
+bool DataModel::setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role)
+{
+    S_D(DataModel);
+
+    if (orientation == Qt::Horizontal && (role == Qt::DisplayRole || role == Qt::EditRole)) {
+        d->headerData.insert(section, value.toString());
+        emit headerDataChanged(orientation, section, section);
+        return true;
+    } else
+        return QAbstractTableModel::setHeaderData(section, orientation, role);
+}
+
+QVariant DataModel::data(const QModelIndex &index, int role) const
+{
+    S_D(const DataModel);
+    const Data data = d->data.at(index.row());
+    const QString property = d->info.displayPropertyName(index.column());
+
+    switch(role) {
+    case Qt::DisplayRole:
+    case Qt::EditRole:
+        return data.property(property).toString();
+
+    default:
+        return QVariant();
     }
+}
 
-    if (d->hasWhereClause())
-        statement.append(' ' + d->whereClause());
+bool DataModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    S_D(DataModel);
 
-    if (d->hasOrderByClause())
-        statement.append(' ' + d->orderByClause());
+    if (role == Qt::DisplayRole || role == Qt::EditRole) {
+        const int row = index.row();
+        d->data[row].setProperty(d->info.displayPropertyName(row), value);
+        return true;
+    } else
+        return QAbstractTableModel::setData(index, value, role);
+}
 
-    if (d->hasGroupByClause())
-        statement.append(' ' + d->groupByClause());
+int DataModel::rowCount(const QModelIndex &parent) const
+{
+    S_D(const DataModel);
+    return (true ? d->data.count() : 0);
+}
 
-    if (d->hasLimitOffsetClause())
-        statement.append(' ' + d->limitOffsetClause());
-
-    return statement;
+int DataModel::columnCount(const QModelIndex &parent) const
+{
+    S_D(const DataModel);
+    return (true ? d->info.displayCount() : 0);
 }
 
 DataModelPrivate::DataModelPrivate(DataModel *qq) :
@@ -181,6 +189,19 @@ DataModelPrivate::DataModelPrivate(DataModel *qq) :
 
 DataModelPrivate::~DataModelPrivate()
 {
+}
+
+QString DataModelPrivate::columnName(int index) const
+{
+    if (headerData.contains(index))
+        return headerData.value(index);
+    else
+        return info.displayPropertyName(index);
+}
+
+int DataModelPrivate::itemNumber(int index) const
+{
+    return (_page > 1 ? ((_page - 1) * _itemsPerPage) : 1) + index;
 }
 
 QString DataModelPrivate::filter() const

@@ -41,6 +41,8 @@ public:
 private:
     Q_SLOT void showInterface();
 
+    Q_SLOT void processWidgetChange(int index);
+
     Ui::InterfaceStack *ui;
 };
 

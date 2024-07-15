@@ -2,41 +2,35 @@
 #define SYSTEMUS_DATAMODEL_H
 
 #include <SystemusCore/global.h>
+#include <SystemusCore/data.h>
 
-#include <QtSql/qsqlquerymodel.h>
+#include <QtCore/qabstractitemmodel.h>
 
-class QSqlField;
-class QSqlRelation;
+class QSqlError;
 
 namespace Systemus {
 
-class Data;
+class DataInfo;
 
 class DataModelPrivate;
-class SYSTEMUS_CORE_EXPORT DataModel : public QSqlQueryModel
+class SYSTEMUS_CORE_EXPORT DataModel : public QAbstractTableModel
 {
+    Q_OBJECT
+
 public:
     explicit DataModel(QObject *parent = nullptr);
     virtual ~DataModel();
 
-    QString tableName() const;
-    void setTableName(const QString &name);
+    template<typename T>
+    Data data(int row) const
+    { return data(row).to<T>(); }
+    Data data(int row) const;
 
-    //QSqlField tableField(int column) const;
-    int fieldCount() const;
-    int addField(const QString &name, QMetaType::Type type, const QString &table = QString());
-    void insertField(int pos, const QString &name, QMetaType::Type type, const QString &table = QString());
-    void replaceField(int pos, const QString &name, QMetaType::Type type, const QString &table = QString());
-    //void removeField(const QString &name);
+    DataInfo dataInfo() const;
+    void setDataInfo(const DataInfo &info);
 
-    //QSqlRelation tableRelation(int index) const;
-    int relationCount() const;
-    int addRelation(const QString &table);
-    int addRelation(const QString &table, const QString &foreignIndex);
-    int addRelation(const QString &table, const QString &index, const QString &foreignIndex);
-    //void removeRelation(const QString &table);
-
-    void setTable(const QString &table);
+    Q_SLOT bool search(const QString &query);
+    void setSearchQuery(const QString &query);
 
     QString filter() const;
     void setFilter(const QString &filter);
@@ -44,12 +38,20 @@ public:
     void sort(int column, Qt::SortOrder order) override;
     void setSort(int column, Qt::SortOrder order);
 
-    virtual bool select();
+    QSqlError lastError() const;
 
-    void clear() override;
+    Q_SLOT bool select();
+    Q_SLOT bool selectRow(int row);
 
-protected:
-    virtual QString selectStatement() const;
+    Q_SLOT void clear();
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    bool setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role = Qt::EditRole) override;
+
+    QVariant data(const QModelIndex &index, int role) const override;
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
 private:
     QScopedPointer<DataModelPrivate> d_ptr;

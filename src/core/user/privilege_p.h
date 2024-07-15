@@ -19,19 +19,22 @@ public:
 
     void clear() override;
 
+    int dataType() const override
+    { return PrivilegeDataType; }
+
     ManyToManyRelation<Permission> permissions;
 };
 
 class PrivilegedDataPrivate : public AuthorizationDataPrivate
 {
 public:
-    PrivilegedDataPrivate(const QString &context, bool withJunctionData);
+    PrivilegedDataPrivate(const QString &context, bool withJunctionData = true);
     PrivilegedDataPrivate(const PrivilegedDataPrivate &other) = default;
 
-    virtual bool isPrivilegeActive(const QString &name) const;
+    virtual bool hasPrivilege(const QString &name) const;
     int privilegeIndex(const QString &name) const;
 
-    virtual bool isPermissionActive(const QString &name) const;
+    virtual bool hasPermission(const QString &name) const;
     int permissionIndex(const QString &name) const;
 
     bool equalsTo(const DataPrivate *o) const override;

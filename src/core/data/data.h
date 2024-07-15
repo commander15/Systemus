@@ -5,13 +5,7 @@
 
 #include <QtSql/qsqlquery.h>
 #include <QtSql/qsqlrecord.h>
-#include <QtSql/qsqlfield.h>
-#include <QtSql/qsqlrelationaltablemodel.h>
 
-#include <QtSql/qsqldriver.h>
-
-#include <QtCore/qjsonobject.h>
-#include <QtCore/qdatetime.h>
 #include <QtCore/qlist.h>
 
 #define S_DATA(Class) \
@@ -20,23 +14,27 @@
 
 #define S_DATA_INIT(Class) \
 protected: \
-    void init() override \
-    { sRegisterType<Class>(); } \
-    QByteArray className() const override \
-    { return QByteArray(staticMetaObject.className()); }
+    void initData() override \
+    { setDataClassName(Class::staticMetaObject.className()); } \
+    const QMetaObject *instanceMetaObject() const override \
+    { return &Class::staticMetaObject; } \
+private:
 
 #define S_DATA_METHODS(Class) \
 public: \
-    static inline QList<Class> all() \
-    { return Systemus::Data::all<Class>(); } \
-    static inline QList<Class> find(const Systemus::DataSearch &query) \
-    { return Systemus::Data::find<Class>(query); } \
+    static int count(const QString &filter = QString(), QSqlError *error = nullptr) \
+    { return Systemus::Data::count<Class>(filter, error); } \
+    static inline QList<Class> all(QSqlError *error = nullptr) \
+    { return Systemus::Data::all<Class>(error); } \
+    static inline QList<Class> find(const Systemus::DataSearch &query, QSqlError *error = nullptr) \
+    { return Systemus::Data::find<Class>(query, error); } \
     static inline QList<Class> fromSqlQuery(QSqlQuery &query) \
     { return Systemus::Data::fromSqlQuery<Class>(query); } \
     static inline QList<Class> fromSqlRecords(const QList<QSqlRecord> &records) \
     { return Systemus::Data::fromSqlRecords<Class>(records); } \
     static inline Class fromSqlRecord(const QSqlRecord &record) \
-    { return Systemus::Data::fromSqlRecord<Class>(record); }
+    { return Systemus::Data::fromSqlRecord<Class>(record); } \
+private:
 
 class QSqlField;
 class QSqlError;
@@ -46,6 +44,134 @@ namespace Systemus {
 
 class DataInfo;
 class DataSearch;
+class DataStorage;
+
+class DataPrivate;
+class SYSTEMUS_CORE_EXPORT Data
+{
+    Q_GADGET
+    Q_PROPERTY(int id READ id WRITE setId)
+
+public:
+    Data();
+    Data(const Data &other);
+    Data(const Data &other, bool transferProperties);
+    virtual ~Data();
+
+    Data &operator=(const Data &other);
+
+    void init();
+
+    int id() const;
+    void setId(int id);
+
+    QVariant property(const QString &name) const;
+    virtual void setProperty(const QString &name, const QVariant &value);
+    QMetaProperty metaPropertyByName(const QString &name) const;
+
+    void fill(const Data &other);
+    void fill(const QSqlRecord &record);
+
+    DataInfo dataInfo() const;
+
+    virtual bool isValid() const;
+
+    void dumpInfos() const;
+
+    virtual bool isEmpty() const;
+    Q_INVOKABLE virtual void clear();
+
+    Q_INVOKABLE inline bool get()
+    { return get("id = " + QString::number(id()), true); }
+    Q_INVOKABLE inline bool get(int id)
+    { return get("id = " + QString::number(id), true); }
+    Q_INVOKABLE virtual bool get(const QString &filter, bool withExtras = true);
+    virtual bool getExtras();
+
+    Q_INVOKABLE bool save();
+    virtual bool insert();
+    virtual bool update();
+
+    Q_INVOKABLE virtual bool deleteData();
+
+    QSqlError lastError() const;
+
+    template<typename T> T to() const;
+    QSqlRecord toSqlRecord() const;
+    QJsonObject toJsonObject() const;
+
+    const void *internalData() const;
+    void *internalData();
+
+    static QSqlQuery execCachedQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr);
+    static QSqlQuery execQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr, bool cached = false);
+
+    static bool beginTransaction();
+    static bool commitTransaction();
+    static bool rollbackTransaction();
+
+    //static QString selectStatement(const QString &table, const QSqlRecord &record, const QList<QSqlRelation> &relations);
+    static QSqlDriver *driver();
+
+    template<typename T>
+    static int count(const QString &filter = QString(), QSqlError *error = nullptr);
+
+    template<typename T>
+    static inline QList<T> all(QSqlError *error = nullptr);
+
+    template<typename T>
+    static QList<T> find(const DataSearch &query, QSqlError *error = nullptr);
+
+    template<typename T>
+    static QList<T> fromSqlQuery(QSqlQuery &query);
+
+    template<typename T>
+    static QList<T> fromSqlRecords(const QList<QSqlRecord> &records);
+
+    template<typename T>
+    static T fromSqlRecord(const QSqlRecord &record);
+
+    bool operator==(const Data &other) const;
+    inline bool operator!=(const Data &other) const
+    { return !operator==(other); }
+
+protected:
+    Data(DataPrivate *data);
+    Data(const QSharedDataPointer<DataPrivate> &data);
+
+    virtual void initData();
+
+    QByteArray instanceClassName() const;
+    virtual const QMetaObject *instanceMetaObject() const;
+
+    QByteArray dataClassName() const;
+
+    void setDataClassName(const QByteArray &name);
+
+    virtual void fillRecord(QSqlRecord *record) const;
+    virtual void extractRecord(const QSqlRecord &record);
+
+    QSqlQuery exec(const QString &query, bool *ok = nullptr) const;
+
+    QSharedDataPointer<DataPrivate> d_ptr;
+
+private:
+    S_DECLARE_PRIVATE(Data)
+
+    inline QString selectStatement() const;
+    static QString selectStatement(const DataInfo &info);
+
+    QString insertStatement() const;
+    QString updateStatement() const;
+    QString deleteStatement() const;
+
+    void bindQueryValues(QSqlQuery &query) const;
+
+    friend class AbstractDataRelation;
+    friend class DataModel;
+
+    friend class StandardUserInterface;
+};
 
 class SYSTEMUS_CORE_EXPORT DataSearch
 {
@@ -83,6 +209,10 @@ protected:
     int _itemsPerPage;
 };
 
+typedef QList<Data>(FindDataFunction)(const DataSearch &query, QSqlError *error);
+typedef void(DataTransferFunction)(const Data *from, Data *to, int type);
+typedef void(JsonGenerationFunction)(const Data &data, QJsonObject *object);
+
 class DataInfoPrivate;
 class SYSTEMUS_CORE_EXPORT DataInfo
 {
@@ -93,29 +223,49 @@ public:
 
     DataInfo &operator=(const DataInfo &other);
 
+    QString tableName() const;
+
     QString idFieldName() const;
     QSqlField idField() const;
+    QString idPropertyName() const;
+    QMetaProperty idProperty() const;
 
     QString userFieldName() const;
     QSqlField userField() const;
+    QString userPropertyName() const;
+    QMetaProperty userProperty() const;
+
+    QStringList displayFieldNames() const;
+    QString displayFieldName(int index) const;
+    QSqlField displayField(int index) const;
+    QStringList displayPropertyNames() const;
+    QString displayPropertyName(int index) const;
+    QMetaProperty displayProperty(int index) const;
+    int displayCount() const;
+    QSqlRecord displayRecord() const;
 
     QStringList searchFieldNames() const;
+    QStringList searchPropertyNames() const;
 
+    QStringList fieldNames() const;
     QString fieldName(int index) const;
     QSqlField field(int index) const;
-    int fieldCount() const;
-
+    QStringList fieldPropertyNames() const;
+    QString fieldPropertyName(int index) const;
+    QMetaProperty fieldProperty(int index) const;
+    int count() const;
     QSqlRecord record() const;
-
-    QString tableName() const;
 
     QString foreignFieldName() const;
     QSqlField foreignField() const;
-
     QString foreignPropertyName() const;
 
-    QString propertyName(int index) const;
-    QMetaProperty property(int index) const;
+    void dumpInfos();
+
+    Data newData() const;
+    Data newData(const QSqlRecord &record) const;
+
+    QList<Data> find(const DataSearch &query, QSqlError *error) const;
 
     const QMetaObject *metaObject() const;
 
@@ -123,8 +273,11 @@ public:
     inline bool operator!=(const DataInfo &other) const
     { return !operator==(other); }
 
+    static inline DataInfo fromName(const QByteArray &className)
+    { return fromRegistry(className); }
+
     template<typename T>
-    static DataInfo fromType()
+    static inline DataInfo fromType()
     { return fromRegistry(T::staticMetaObject.className()); }
 
     static DataInfo fromRegistry(const QByteArray &className);
@@ -132,7 +285,12 @@ public:
     static DataInfo fromTable(const QString &tableName);
     static DataInfo fromTableRecord(const QString &tableName, const QSqlRecord &record);
 
-    static QHash<QByteArray, DataInfo> _registry;
+    static void registerInfo(const QByteArray &className, const DataInfo &info);
+    static void registerFindFunction(const QByteArray &className, const std::function<FindDataFunction> &function);
+    static void registerTransferFunction(const QByteArray &className, const std::function<DataTransferFunction> &function);
+    static void registerJsonGenerationFunction(const QByteArray &className, const std::function<JsonGenerationFunction> &function);
+
+    static QList<QSqlField> fieldsFromString(const QString &str, const QString &tableName, const QString &context);
 
 private:
     DataInfo(DataInfoPrivate *d);
@@ -140,123 +298,51 @@ private:
     QSharedDataPointer<DataInfoPrivate> d_ptr;
 };
 
-class DataPrivate;
-class SYSTEMUS_CORE_EXPORT Data
+class SYSTEMUS_CORE_EXPORT DataRegistration
 {
-    Q_GADGET
-    Q_PROPERTY(int id READ id WRITE setId)
-
 public:
-    Data();
-    Data(const Data &other);
-    virtual ~Data();
-    
-    Data &operator=(const Data &other);
-    
-    int id() const;
-    void setId(int id);
+    DataRegistration(const QByteArray &className);
 
-    QVariant property(const QString &name) const;
-    void setProperty(const QString &name, const QVariant &value);
-    QMetaProperty metaPropertyByName(const QString &name) const;
-
-    DataInfo dataInfo() const;
-
-    virtual bool isValid() const;
-
-    void fill(const Data &other);
-
-    virtual void dumpInfos() const;
-
-    virtual bool isEmpty() const;
-    Q_INVOKABLE virtual void clear();
-    
-    Q_INVOKABLE inline bool get()
-    { return get(id()); }
-    Q_INVOKABLE inline bool get(int id)
-    { return get("id = " + QString::number(id)); }
-    Q_INVOKABLE virtual bool get(const QString &filter, bool withExtras = true);
-    virtual bool getExtras();
-    
-    Q_INVOKABLE bool save();
-    virtual bool insert();
-    virtual bool update();
-    
-    Q_INVOKABLE virtual bool deleteData();
-    
-    QSqlError lastError() const;
-    
-    QSqlRecord toSqlRecord() const;
-
-    virtual QJsonObject toJsonObject() const;
-
-    template<typename T>
-    static inline QList<T> all();
-    
-    template<typename T>
-    static QList<T> find(const DataSearch &query);
-    
-    template<typename T>
-    static QList<T> fromSqlQuery(QSqlQuery &query);
-    
-    template<typename T>
-    static QList<T> fromSqlRecords(const QList<QSqlRecord> &records);
-    
-    template<typename T>
-    static T fromSqlRecord(const QSqlRecord &record);
-
-    bool operator==(const Data &other) const;
-    inline bool operator!=(const Data &other) const
-    { return !operator==(other); }
-    
-protected:
-    Data(DataPrivate *data);
-    Data(const QSharedDataPointer<DataPrivate> &other);
-
-    virtual void init();
-
-    virtual QByteArray className() const;
-
-    void setDataInfo(const DataInfo &info);
-
-    virtual void fillRecord(QSqlRecord *record) const;
-    virtual void extractRecord(const QSqlRecord &record);
-
-    QSqlQuery exec(const QString &query, bool *ok = nullptr) const;
-    static QSqlQuery execCachedQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr);
-    static QSqlQuery execQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr, bool cached = false);
-
-    QSharedDataPointer<DataPrivate> d_ptr;
+    DataRegistration &init(const std::function<void()> &function);
+    DataRegistration &transfer(const std::function<DataTransferFunction> &function);
+    DataRegistration &jsonGenerator(const std::function<JsonGenerationFunction> &function);
 
 private:
-    S_DECLARE_PRIVATE(Data)
-
-    void initOperation() const;
-    void initOperation();
-
-    inline QString selectStatement() const;
-    static QString selectStatement(const DataInfo &info);
-
-    QString insertStatement() const;
-    QString updateStatement() const;
-    QString deleteStatement() const;
-    static QSqlDriver *driver();
-    
-    void bindQueryValues(QSqlQuery &query) const;
-
-    template<typename ForeignData>
-    friend class DataRelation;
-    friend class DataModel;
-
-    friend class StandardUserInterface;
+    const QByteArray _className;
 };
 
 template<typename T>
-QList<T> Data::all()
-{ return find<T>(DataSearch(QString(), 0, 0)); }
+inline T Data::to() const
+{
+    T data;
+    data.setId(id());
+    data.fill(*this);
+    return data;
+}
 
 template<typename T>
-QList<T> Data::find(const DataSearch &query)
+int Data::count(const QString &filter, QSqlError *error)
+{
+    const DataInfo info = DataInfo::fromType<T>();
+    QString statement = "SELECT COUNT(" + info.idFieldName() + ") FROM " + info.tableName();
+
+    if (!filter.isEmpty())
+        statement.append(" WHERE " + filter);
+
+    bool ok;
+    QSqlQuery qu = execQuery(statement, &ok, error);
+    if (ok && qu.next())
+        return qu.value(0).toInt();
+    else
+        return 0;
+}
+
+template<typename T>
+QList<T> Data::all(QSqlError *error)
+{ return find<T>(DataSearch(QString(), 0, 0), error); }
+
+template<typename T>
+QList<T> Data::find(const DataSearch &query, QSqlError *error)
 {
     QString statement = selectStatement(DataInfo::fromType<T>());
 
@@ -273,7 +359,7 @@ QList<T> Data::find(const DataSearch &query)
         statement.append(' ' + query.limitOffsetClause());
 
     bool ok;
-    QSqlQuery qu = execQuery(statement, &ok);
+    QSqlQuery qu = execQuery(statement, &ok, error);
     if (ok)
         return fromSqlQuery<T>(qu);
     else
@@ -308,23 +394,30 @@ T Data::fromSqlRecord(const QSqlRecord &record)
 }
 
 }
+
 template<typename T>
-static void sRegisterType(const Systemus::DataInfo &info)
+Systemus::DataRegistration sRegisterType(Systemus::DataInfo info)
 {
     const QByteArray className(T::staticMetaObject.className());
 
-    QHash<QByteArray, Systemus::DataInfo> *registry = &Systemus::DataInfo::_registry;
-    if (className == Systemus::Data::staticMetaObject.className())
-        qDebug() << Q_FUNC_INFO << ": registering Systemus::Data detected !";
-    else
-        registry->insert(className, info);
+    Systemus::DataInfo::registerInfo(className, info);
 
-    qDebug() << "Type" << className << info.tableName();
+    Systemus::DataInfo::registerFindFunction(className, [](const Systemus::DataSearch &query, QSqlError *error) {
+        const QList<T> found = Systemus::Data::find<T>(query, error);
+        QList<Systemus::Data> data;
+        for (const T &f : found)
+            data.append(f);
+        return data;
+    });
+
+    qRegisterMetaType<T>();
+
+    return Systemus::DataRegistration(className);
 }
 
 template<typename T>
-static void sRegisterType()
-{ sRegisterType<T>(Systemus::DataInfo::fromMetaObject(T::staticMetaObject)); }
+Systemus::DataRegistration sRegisterType()
+{ return sRegisterType<T>(Systemus::DataInfo::fromMetaObject(T::staticMetaObject)); }
 
 Q_DECLARE_METATYPE(Systemus::Data)
 

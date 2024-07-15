@@ -1,6 +1,5 @@
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
 
 set(QT_MODULES Core Sql)
 

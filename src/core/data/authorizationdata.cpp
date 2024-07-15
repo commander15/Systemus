@@ -18,8 +18,19 @@ AuthorizationData::AuthorizationData(const AuthorizationData &other) :
 {
 }
 
+AuthorizationData::AuthorizationData(const AuthorizationData &other, bool transferProperties) :
+    Data(other, transferProperties)
+{
+}
+
 AuthorizationData::~AuthorizationData()
 {
+}
+
+AuthorizationData &AuthorizationData::operator=(const AuthorizationData &other)
+{
+    Data::operator=(other);
+    return *this;
 }
 
 QString AuthorizationData::name() const
@@ -58,10 +69,30 @@ QTime AuthorizationData::creationTime() const
     return d->creationTime;
 }
 
+void AuthorizationData::setProperty(const QString &name, const QVariant &value)
+{
+    S_D(AuthorizationData);
+
+    if (name == "creationDate")
+        d->creationDate = value.toDate();
+    else if (name == "creationTime")
+        d->creationTime = value.toTime();
+    else
+        Data::setProperty(name, value);
+}
+
 bool AuthorizationData::isValid() const
 {
     S_D(const AuthorizationData);
     return !d->name.isEmpty() && Data::isValid();
+}
+
+bool AuthorizationData::insert()
+{
+    S_D(AuthorizationData);
+    d->creationDate = QDate::currentDate();
+    d->creationTime = QTime::currentTime();
+    return Data::insert();
 }
 
 }

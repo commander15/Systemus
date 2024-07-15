@@ -4,6 +4,8 @@
 #include <SystemusCore/global.h>
 #include <SystemusCore/data.h>
 
+#include <QtCore/qdatetime.h>
+
 namespace Systemus {
 
 class AuthorizationDataPrivate;
@@ -18,7 +20,10 @@ class SYSTEMUS_CORE_EXPORT AuthorizationData : public Data
 public:
     AuthorizationData();
     AuthorizationData(const AuthorizationData &other);
+    AuthorizationData(const AuthorizationData &other, bool transferProperties);
     virtual ~AuthorizationData();
+
+    AuthorizationData &operator=(const AuthorizationData &other);
 
     QString name() const;
     void setName(const QString &name);
@@ -29,7 +34,11 @@ public:
     QDate creationDate() const;
     QTime creationTime() const;
 
-    bool isValid() const override;
+    virtual void setProperty(const QString &name, const QVariant &value) override;
+
+    virtual bool isValid() const override;
+
+    virtual bool insert() override;
 
 protected:
     AuthorizationData(AuthorizationDataPrivate *data);

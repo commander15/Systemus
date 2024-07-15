@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>scripts/Systemus0.sql</file>
+        <file>configs/system.json</file>
+    </qresource>
+</RCC>

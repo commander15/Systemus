@@ -4,6 +4,8 @@
 #include <SystemusCore/datamodel.h>
 #include <SystemusCore/data.h>
 
+#include <QtSql/qsqlerror.h>
+
 namespace Systemus {
 
 class DataModelPrivate : public DataSearch
@@ -12,6 +14,9 @@ public:
     DataModelPrivate(DataModel *qq);
     ~DataModelPrivate();
 
+    QString columnName(int index) const;
+    int itemNumber(int index) const;
+
     QString filter() const;
     void setFilter(const QString &filter);
 
@@ -19,9 +24,12 @@ public:
 
     DataModel *q;
 
-    QString tableName;
-    QSqlRecord tableRecord;
-    QHash<QString, QSqlRelation> tableRelations;
+    QHash<int, QString> headerData;
+
+    DataInfo info;
+    QList<Data> data;
+
+    QSqlError lastError;
 };
 
 }

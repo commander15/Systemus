@@ -11,7 +11,7 @@ class UserInterface;
 
 class InterfaceHolderManager;
 
-class InterfaceHolder
+class SYSTEMUS_WIDGETS_EXPORT InterfaceHolder
 {
 public:
     InterfaceHolder();
@@ -37,7 +37,39 @@ protected:
     friend class InterfaceHolderManager;
 };
 
-class InterfaceHolderManager : public InterfaceHolder
+class SYSTEMUS_WIDGETS_EXPORT SimpleInterfaceHolder : public InterfaceHolder
+{
+public:
+    SimpleInterfaceHolder();
+    virtual ~SimpleInterfaceHolder();
+
+    UserInterface *currentInterface() const override;
+
+    int currentIndex() const override;
+    void setCurrentIndex(int index) override;
+
+    UserInterface *interface(int index) const override;
+    int count() const override;
+    int addInterface(UserInterface *interface) override;
+    int insertInterface(int index, UserInterface *interface) override;
+    void removeInterface(UserInterface *interface) override;
+
+    int indexOf(UserInterface *interface) const override;
+
+protected:
+    virtual void processInterfaceChange(UserInterface *from, UserInterface *to);
+
+    virtual void registerInterface(UserInterface *interface);
+    virtual void unregisterInterface(UserInterface *interface);
+
+    int _current;
+    QVector<UserInterface *> _interfaces;
+
+private:
+    bool isValidIndex(int index) const;
+};
+
+class SYSTEMUS_WIDGETS_EXPORT InterfaceHolderManager : public InterfaceHolder
 {
 public:
     InterfaceHolderManager();

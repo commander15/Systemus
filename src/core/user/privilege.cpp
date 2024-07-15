@@ -8,10 +8,11 @@ namespace Systemus {
 Privilege::Privilege() :
     AuthorizationData(new PrivilegePrivate)
 {
+    init();
 }
 
 Privilege::Privilege(const Privilege &other) :
-    AuthorizationData(other)
+    AuthorizationData(other, false)
 {
 }
 
@@ -19,16 +20,16 @@ Privilege::~Privilege()
 {
 }
 
-bool Privilege::hasPermission(const QString &name) const
+Privilege &Privilege::operator=(const Privilege &other)
 {
-    return isPermissionActive(name);
+    AuthorizationData::operator=(other);
+    return *this;
 }
 
-bool Privilege::isPermissionActive(const QString &name) const
+bool Privilege::hasPermission(const QString &name) const
 {
     S_D(const Privilege);
-    int index = d->permissionIndex(name);
-    return (index >= 0 ? d->permissions.junctionData("active", index).toBool() : false);
+    return d->permissionIndex(name) >= 0;
 }
 
 QList<Permission> Privilege::permissions() const
@@ -43,22 +44,14 @@ bool Privilege::getExtras()
     return d->permissions.get(this);
 }
 
-QJsonObject Privilege::toJsonObject() const
+PrivilegedData::PrivilegedData() :
+    AuthorizationData(new PrivilegedDataPrivate(QString(), false))
 {
-    S_D(const Privilege);
+}
 
-    QJsonObject object = AuthorizationData::toJsonObject();
-
-    QJsonArray permissions;
-    for (const Permission &permission : d->permissions) {
-        QJsonObject permissionObject;
-        permissionObject.insert("permission", permission.toJsonObject());
-        permissionObject.insert("active", d->permissions.junctionData(0).value("active").toBool());
-        permissions.append(permissionObject);
-    }
-    object.insert("permissions", permissions);
-
-    return object;
+PrivilegedData::PrivilegedData(const PrivilegedData &other) :
+    AuthorizationData(other)
+{
 }
 
 PrivilegedData::PrivilegedData(PrivilegedDataPrivate *data) :
@@ -66,8 +59,8 @@ PrivilegedData::PrivilegedData(PrivilegedDataPrivate *data) :
 {
 }
 
-PrivilegedData::PrivilegedData() :
-    AuthorizationData(new PrivilegedDataPrivate(QString(), false))
+PrivilegedData::PrivilegedData(const PrivilegedData &other, bool transferProperties) :
+    AuthorizationData(other, transferProperties)
 {
 }
 
@@ -75,15 +68,16 @@ PrivilegedData::~PrivilegedData()
 {
 }
 
-bool PrivilegedData::hasPrivilege(const QString &name) const
+PrivilegedData &PrivilegedData::operator=(const PrivilegedData &other)
 {
-    return isPrivilegeActive(name);
+    AuthorizationData::operator=(other);
+    return *this;
 }
 
-bool PrivilegedData::isPrivilegeActive(const QString &name) const
+bool PrivilegedData::hasPrivilege(const QString &name) const
 {
     S_D(const PrivilegedData);
-    return d->isPrivilegeActive(name);
+    return d->hasPrivilege(name);
 }
 
 QList<Privilege> PrivilegedData::privileges() const
@@ -94,13 +88,8 @@ QList<Privilege> PrivilegedData::privileges() const
 
 bool PrivilegedData::hasPermission(const QString &name) const
 {
-    return isPermissionActive(name);
-}
-
-bool PrivilegedData::isPermissionActive(const QString &name) const
-{
     S_D(const PrivilegedData);
-    return d->isPermissionActive(name);
+    return d->hasPermission(name);
 }
 
 QList<Permission> PrivilegedData::permissions() const
@@ -115,35 +104,8 @@ bool PrivilegedData::getExtras()
     return d->privileges.get(this) && d->permissions.get(this);
 }
 
-QJsonObject PrivilegedData::toJsonObject() const
-{
-    S_D(const PrivilegedData);
-
-    QJsonObject object = AuthorizationData::toJsonObject();
-
-    QJsonArray privileges;
-    for (int i(0); i < d->privileges.size(); ++i) {
-        QJsonObject privilegeObject;
-        privilegeObject.insert("privilege", d->privileges.at(i).toJsonObject());
-        privilegeObject.insert("active", d->privileges.junctionData("active", i).toBool());
-        privileges.append(privilegeObject);
-    }
-    object.insert("privileges", privileges);
-
-    QJsonArray permissions;
-    for (const Permission &permission : d->permissions) {
-        QJsonObject permissionObject;
-        permissionObject.insert("permission", permission.toJsonObject());
-        permissionObject.insert("active", d->permissions.junctionData(0).value("active").toBool());
-        permissions.append(permissionObject);
-    }
-    object.insert("permissions", permissions);
-
-    return object;
-}
-
 PrivilegePrivate::PrivilegePrivate() :
-    permissions("PrivilegePermissions", { "active", "issue_date", "issue_time" })
+    permissions("PrivilegePermissions", { "issue_date", "issue_time" })
 {
 }
 
@@ -170,15 +132,14 @@ void PrivilegePrivate::clear()
 }
 
 PrivilegedDataPrivate::PrivilegedDataPrivate(const QString &context, bool withJunctionData) :
-    privileges(context + "Privileges", (withJunctionData ? QStringList() << "active" << "issue_date" << "issue_time" : QStringList())),
-    permissions(context + "Permissions", (withJunctionData ? QStringList() << "active" << "issue_date" << "issue_time" : QStringList()))
+    privileges(context + "Privileges", (withJunctionData ? QStringList() << "issue_date" << "issue_time" : QStringList())),
+    permissions(context + "Permissions", (withJunctionData ? QStringList() << "issue_date" << "issue_time" : QStringList()))
 {
 }
 
-bool PrivilegedDataPrivate::isPrivilegeActive(const QString &name) const
+bool PrivilegedDataPrivate::hasPrivilege(const QString &name) const
 {
-    int index = privilegeIndex(name);
-    return (index >= 0 ? privileges.junctionData("active", index).toBool() : false);
+    return privilegeIndex(name) >= 0;
 }
 
 int PrivilegedDataPrivate::privilegeIndex(const QString &name) const
@@ -189,10 +150,9 @@ int PrivilegedDataPrivate::privilegeIndex(const QString &name) const
     return -1;
 }
 
-bool PrivilegedDataPrivate::isPermissionActive(const QString &name) const
+bool PrivilegedDataPrivate::hasPermission(const QString &name) const
 {
-    int index = permissionIndex(name);
-    return (index >= 0 ? permissions.junctionData("active", index).toBool() : false);
+    return permissionIndex(name) >= 0;
 }
 
 int PrivilegedDataPrivate::permissionIndex(const QString &name) const

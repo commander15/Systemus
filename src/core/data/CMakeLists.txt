@@ -1,7 +1,7 @@
 target_headers(core
     PUBLIC
         data.h
-        datarelation.h datarelation_impl.h
+        datarelation.h
         authorizationdata.h
         datamodel.h
     PRIVATE
@@ -13,6 +13,7 @@ target_headers(core
 target_sources(core
     PRIVATE
         data.cpp
+        datarelation.cpp
         authorizationdata.cpp
         datamodel.cpp
 )

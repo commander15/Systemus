@@ -1,0 +1,114 @@
+#include "mainwidget.h"
+#include "ui_mainwidget.h"
+
+#include <QtGui/qclipboard.h>
+
+MainWidget::MainWidget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::MainWidget)
+{
+    ui->setupUi(this);
+
+    QHeaderView *view = ui->permissionTable->horizontalHeader();
+    view->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    view->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    view->setSectionResizeMode(2, QHeaderView::Fixed);
+    view.set
+}
+
+MainWidget::~MainWidget()
+{
+    delete ui;
+}
+
+void MainWidget::on_tabWidget_currentChanged(int index)
+{
+    QWidget *tab = ui->tabWidget->widget(index);
+
+    if (tab == ui->outputTab) {
+        ui->scriptOutput->setPlainText(generateScript());
+        ui->copyButton->animateClick();
+    }
+}
+
+
+void MainWidget::on_addButton_clicked()
+{
+    ui->permissionTable->setRowCount(ui->permissionTable->rowCount() + 1);
+}
+
+
+void MainWidget::on_copyButton_clicked()
+{
+    qApp->clipboard()->setText(ui->scriptOutput->toPlainText());
+}
+
+QString MainWidget::generateScript()
+{
+    QString script;
+
+    script.append("INSERT INTO Privileges(name, description, creation_date, creation_time)\nVALUES(");
+    script.append('\'' + ui->nameInput->text() + '\'');
+    script.append(", '" + ui->descriptionInput->text() + '\'');
+    script.append(", CURRENT_DATE, CURRENT_TIME");
+    script.append(");\n\n");
+    script.append("SET @pri_id = LAST_INSERT_ID();\n\n");
+
+    for (int i(0); i < ui->permissionTable->rowCount(); ++i) {
+        script.append("INSERT INTO Permissions(name, description, creation_date, creation_time)\nVALUES(");
+        script.append('\'' + ui->permissionTable->item(i, 0)->text() + '\'');
+        script.append(", '" + ui->permissionTable->item(i, 1)->text() + '\'');
+        script.append(", CURRENT_DATE, CURRENT_TIME");
+        script.append(");\n\n");
+
+        if (true) {
+            script.append("INSERT INTO PrivilegePermissions(issue_date, issue_time, privilege_id, permission_id)\nVALUES(");
+            script.append("CURRENT_DATE, CURRENT_TIME, @pri_id, LAST_INSERT_ID());\n\n");
+        }
+    }
+
+    return script;
+}
+
+
+void MainWidget::on_populateButton_clicked()
+{
+    QString name = ui->nameInput->text();
+    if (!name.contains(".management"))
+        return;
+
+    name.remove(".management");
+
+    QString descName = name;
+    descName[0] = descName.at(0).toUpper();
+
+    ui->descriptionInput->setText(descName + " Management");
+
+    populate(0, name + ".list", "List " + name + 's');
+    populate(1, name + ".create", "Create " + name);
+    populate(2, name + ".read", "Read " + name);
+    populate(3, name + ".update", "Update " + name);
+    populate(4, name + ".delete", "Delete " + name);
+    populate(5, name + ".print", "Print " + name + " data");
+}
+
+void MainWidget::populate(int row, const QString &name, const QString &desc)
+{
+    if (row >= ui->permissionTable->rowCount()) {
+        ui->permissionTable->insertRow(row);
+        ui->permissionTable->setItem(row, 0, new QTableWidgetItem());
+        ui->permissionTable->setItem(row, 1, new QTableWidgetItem());
+    }
+
+    ui->permissionTable->item(row, 0)->setText(name);
+    ui->permissionTable->item(row, 1)->setText(desc);
+}
+
+
+void MainWidget::on_removeButton_clicked()
+{
+    int row = ui->permissionTable->currentRow();
+    if (row >= 0)
+        ui->permissionTable->removeRow(row);
+}
+

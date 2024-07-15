@@ -1,6 +1,7 @@
 #include "authenticator.h"
 #include "authenticator_p.h"
 
+#include <SystemusCore/system.h>
 #include <SystemusCore/private/user_p.h>
 
 namespace Systemus {
@@ -39,6 +40,11 @@ QString AuthenticationError::errorString() const
 Authenticator::Authenticator() :
     d_ptr(new AuthenticatorPrivate)
 {
+    System *system = System::instance();
+    connect(this, &Authenticator::loggedIn, system, &System::setUser);
+    connect(this, &Authenticator::loggedOut, system, [system] {
+        system->setUser(User());
+    });
 }
 
 Authenticator::~Authenticator()

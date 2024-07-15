@@ -11,16 +11,17 @@ class SYSTEMUS_CORE_EXPORT Permission : public AuthorizationData
     Q_GADGET
 
 public:
-    enum PermissionStatus {
-        ActivePermission,
-        InactivePermission,
-        UndefinedPermission
-    };
+    Permission();
+    Permission(const Permission &other);
+
+    Permission &operator=(const Permission &other);
 
 private:
     S_DATA(Permission)
 };
 
 }
+
+Q_DECLARE_METATYPE(Systemus::Permission)
 
 #endif // SYSTEMUS_PERMISSION_H

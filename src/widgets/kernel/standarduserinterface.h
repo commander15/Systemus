@@ -8,7 +8,7 @@ class QMenu;
 
 class QTextDocument;
 
-class QSqlRecord;
+class Data;
 
 class QPagedPaintDevice;
 
@@ -51,13 +51,9 @@ public:
     { return StandardInterface; }
 
 protected:
-    Q_SLOT virtual void showRecord(const QSqlRecord &record);
-    virtual bool addRecord(const QSqlRecord &record);
-    virtual bool editRecord(const QSqlRecord &record);
-    virtual bool deleteRecords(const QList<QSqlRecord> &records);
-    virtual void fillDocumentForPrinting(QTextDocument *document, const QSqlRecord &record);
+    virtual void fillDocumentForPrinting(QTextDocument *document, const Data &data);
 
-    virtual void showRecordsContextMenu(const QList<QSqlRecord> &records, const QPoint &pos);
+    virtual void showDataContextMenu(const QList<Data> &data, const QPoint &pos);
 
     void initUi() override;
     void translateUi() override;

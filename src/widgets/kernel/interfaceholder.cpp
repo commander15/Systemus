@@ -16,7 +16,7 @@ UserInterface *InterfaceHolder::currentInterface() const
 
 int InterfaceHolder::addInterface(UserInterface *interface)
 {
-    return insertInterface(count() - 1, interface);
+    return insertInterface(count(), interface);
 }
 
 int InterfaceHolder::indexOf(UserInterface *interface) const
@@ -35,6 +35,96 @@ void InterfaceHolder::completeRegistration(InterfaceHolderManager *manager)
 void InterfaceHolder::completeUnregistration(InterfaceHolderManager *manager)
 {
     Q_UNUSED(manager);
+}
+
+SimpleInterfaceHolder::SimpleInterfaceHolder() :
+    _current(-1)
+{
+}
+
+SimpleInterfaceHolder::~SimpleInterfaceHolder()
+{
+}
+
+UserInterface *SimpleInterfaceHolder::currentInterface() const
+{
+    return (_current >= 0 && _current < _interfaces.size() ? _interfaces.at(_current) : nullptr);
+}
+
+int SimpleInterfaceHolder::currentIndex() const
+{
+    return _current;
+}
+
+void SimpleInterfaceHolder::setCurrentIndex(int index)
+{
+    if (isValidIndex(index)) {
+        int oldIndex = _current;
+        _current = index;
+        processInterfaceChange(interface(oldIndex), interface(index));
+    }
+}
+
+UserInterface *SimpleInterfaceHolder::interface(int index) const
+{
+    if (isValidIndex(index))
+        return _interfaces.at(index);
+    else
+        return nullptr;
+}
+
+int SimpleInterfaceHolder::count() const
+{
+    return _interfaces.count();
+}
+
+int SimpleInterfaceHolder::addInterface(UserInterface *interface)
+{
+    _interfaces.append(interface);
+    registerInterface(interface);
+    return _interfaces.count() - 1;
+}
+
+int SimpleInterfaceHolder::insertInterface(int index, UserInterface *interface)
+{
+    if (index >= 0 && index <= _interfaces.size()) {
+        _interfaces.insert(index, interface);
+        registerInterface(interface);
+        return index;
+    } else
+        return -1;
+}
+
+void SimpleInterfaceHolder::removeInterface(UserInterface *interface)
+{
+    unregisterInterface(interface);
+    _interfaces.removeOne(interface);
+}
+
+int SimpleInterfaceHolder::indexOf(UserInterface *interface) const
+{
+    return _interfaces.indexOf(interface);
+}
+
+void SimpleInterfaceHolder::processInterfaceChange(UserInterface *from, UserInterface *to)
+{
+    Q_UNUSED(from);
+    Q_UNUSED(to);
+}
+
+void SimpleInterfaceHolder::registerInterface(UserInterface *interface)
+{
+    Q_UNUSED(interface);
+}
+
+void SimpleInterfaceHolder::unregisterInterface(UserInterface *interface)
+{
+    Q_UNUSED(interface);
+}
+
+bool SimpleInterfaceHolder::isValidIndex(int index) const
+{
+    return index >= 0 && index < _interfaces.size();
 }
 
 InterfaceHolderManager::InterfaceHolderManager()
@@ -94,7 +184,7 @@ int InterfaceHolderManager::count() const
 
 int InterfaceHolderManager::addInterface(UserInterface *interface)
 {
-    int index;
+    int index = -1;
     for (InterfaceHolder *holder : _holders)
         index = holder->addInterface(interface);
     return index;
@@ -102,7 +192,7 @@ int InterfaceHolderManager::addInterface(UserInterface *interface)
 
 int InterfaceHolderManager::insertInterface(int index, UserInterface *interface)
 {
-    int interfaceIndex;
+    int interfaceIndex = -1;
     for (InterfaceHolder *holder : _holders)
         interfaceIndex = holder->insertInterface(index, interface);
     return interfaceIndex;

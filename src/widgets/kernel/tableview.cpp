@@ -1,6 +1,6 @@
 #include "tableview.h"
 
-#include <QtWidgets/qheaderview.h>
+#include <SystemusCore/datamodel.h>
 
 namespace Systemus {
 
@@ -18,64 +18,48 @@ TableView::~TableView()
 {
 }
 
-QSqlRecord TableView::currentRecord() const
+Data TableView::currentData() const
 {
-    if (model())
-        return model()->record(currentIndex().row());
-    else
-        return QSqlRecord();
+    DataModel *model = this->model();
+    if (!model)
+        return Data();
+
+    return model->data(currentIndex().row());
 }
 
-QList<QSqlRecord> TableView::selectedRecords() const
+QList<Data> TableView::selectedData() const
 {
-    QList<QSqlRecord> records;
+    QList<Data> data;
 
     const QModelIndexList indexes = selectedIndexes();
     for (const QModelIndex &index : indexes)
-        records.append(model()->record(index.row()));
+        data.append(model()->data(index.row()));
 
-    return records;
+    return data;
 }
 
-QSqlRecord TableView::recordAt(const QPoint &pos) const
+Data TableView::dataAt(const QPoint &pos) const
 {
-    if (model())
-        return model()->record(indexAt(pos).row());
-    else
-        return QSqlRecord();
+    DataModel *model = this->model();
+    if (!model)
+        return Data();
+
+    return model->data(indexAt(pos).row());
 }
 
-QSqlQueryModel *TableView::model() const
+DataModel *TableView::model() const
 {
-    QAbstractItemModel *model = QTableView::model();
-    return (model ? static_cast<QSqlTableModel *>(model) : nullptr);
+    return static_cast<DataModel *>(QTableView::model());
 }
 
-void TableView::setModel(QSqlQueryModel *model)
+void TableView::setModel(DataModel *model)
 {
-    QSqlQueryModel *oldModel = this->model();
-    if (oldModel)
-        disconnect(oldModel, &QAbstractItemModel::modelReset, this, &TableView::prepare);
-
     QTableView::setModel(model);
-    if (model) {
-        prepare();
-        connect(model, &QAbstractItemModel::modelReset, this, &TableView::prepare);
-    }
-}
-
-void TableView::prepare()
-{
-    hideColumn(0);
-
-    QHeaderView *view = horizontalHeader();
-    for (int i(1); i < view->count(); ++i)
-        view->setSectionResizeMode(i, QHeaderView::Stretch);
 }
 
 void TableView::processDoubleClick(const QModelIndex &index)
 {
-    emit recordDoubleClicked(model()->record(index.row()));
+    emit dataDoubleClicked(model()->data(index.row()));
 }
 
 }

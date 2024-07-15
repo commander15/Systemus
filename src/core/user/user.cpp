@@ -6,36 +6,21 @@
 
 namespace Systemus {
 
-UserProfile::UserProfile() :
-    Data(new UserProfilePrivate)
-{
-}
-
-UserProfile::UserProfile(const UserProfile &other) :
-    Data(other)
-{
-}
-
-QString UserProfile::name() const
-{
-    S_D(const UserProfile);
-    return d->name;
-}
-
-void UserProfile::setName(const QString &name)
-{
-    S_D(UserProfile);
-    d->name = name;
-}
-
 User::User() :
     PrivilegedData(new UserPrivate)
 {
+    init();
 }
 
 User::User(const User &other) :
-    PrivilegedData(other)
+    PrivilegedData(other, true)
 {
+}
+
+User &User::operator=(const User &other)
+{
+    PrivilegedData::operator=(other);
+    return *this;
 }
 
 QString User::password() const
@@ -65,12 +50,6 @@ void User::setActive(bool active)
     d->active = active;
 }
 
-QString User::profileName() const
-{
-    S_D(const User);
-    return d->profile->name();
-}
-
 UserProfile User::profile() const
 {
     S_D(const User);
@@ -89,31 +68,77 @@ Role User::role() const
     return d->role;
 }
 
-QJsonObject User::toJsonObject() const
+bool User::inGroup(const QString &name) const
 {
     S_D(const User);
+    for (const Group &group : d->groups)
+        if (group.name() == name)
+            return true;
+    return false;
+}
 
-    QJsonObject object = AuthorizationData::toJsonObject();
-    object.insert("role", d->role->toJsonObject());
-    return object;
+QList<Group> User::groups() const
+{
+    S_D(const User);
+    return d->groups;
 }
 
 bool User::getExtras()
 {
     S_D(User);
-    return d->role.get(this) && PrivilegedData::getExtras();
+    return PrivilegedData::getExtras() && d->profile.get(this) && d->role.get(this) && d->groups.get(this);
 }
 
-bool User::insert()
+UserProfile::UserProfile() :
+    Data(new UserProfilePrivate)
 {
-    S_D(User);
-    d->creationDate = QDate::currentDate();
-    d->creationTime = QTime::currentTime();
-    return Data::insert();
+    init();
+}
+
+UserProfile::UserProfile(const UserProfile &other) :
+    Data(other, false)
+{
+}
+
+UserProfile &UserProfile::operator=(const UserProfile &other)
+{
+    Data::operator=(other);
+    return *this;
+}
+
+QString UserProfile::name() const
+{
+    S_D(const UserProfile);
+    return d->name;
+}
+
+void UserProfile::setName(const QString &name)
+{
+    S_D(UserProfile);
+    d->name = name;
+}
+
+QString UserProfile::firstName() const
+{
+    S_D(const UserProfile);
+    return d->firstName;
+}
+
+void UserProfile::setFirstName(const QString &name)
+{
+    S_D(UserProfile);
+    d->firstName = name;
+}
+
+QString UserProfile::fullName() const
+{
+    S_D(const UserProfile);
+    return d->name + (!d->firstName.isEmpty() ? ' ' + d->firstName : QString());
 }
 
 UserPrivate::UserPrivate() :
-    PrivilegedDataPrivate("User", true)
+    PrivilegedDataPrivate("User", true),
+    groups("UserGroups", { "add_date", "add_time" })
 {
 }
 
@@ -125,11 +150,53 @@ QString UserPrivate::encryptPassword(const QString &password)
     return hash.toHex();
 }
 
-bool UserPrivate::isPrivilegeActive(const QString &name) const
-{ return role->isPrivilegeActive(name) || PrivilegedDataPrivate::isPrivilegeActive(name); }
+bool UserPrivate::hasPrivilege(const QString &name) const
+{
+    if (PrivilegedDataPrivate::hasPrivilege(name))
+        return true;
+    else if (role->hasPrivilege(name))
+        return true;
+    else {
+        for (const Group &group : groups)
+            if (group.hasPrivilege(name))
+                return true;
+        return false;
+    }
+}
 
-bool UserPrivate::isPermissionActive(const QString &name) const
-{ return role->isPermissionActive(name) || PrivilegedDataPrivate::isPermissionActive(name); }
+bool UserPrivate::hasPermission(const QString &name) const
+{
+    if (PrivilegedDataPrivate::hasPermission(name))
+        return true;
+    else if (role->hasPermission(name))
+        return true;
+    else {
+        for (const Group &group : groups)
+            if (group.hasPermission(name))
+                return true;
+        return false;
+    }
+}
+
+QVariant UserPrivate::property(const QString &name) const
+{
+    if (name == "password")
+        return password;
+    else if (name == "active")
+        return active;
+    else
+        return PrivilegedDataPrivate::property(name);
+}
+
+void UserPrivate::setProperty(const QString &name, const QVariant &value)
+{
+    if (name == "password")
+        password = value.toString();
+    else if (name == "active")
+        active = value.toBool();
+    else
+        PrivilegedDataPrivate::setProperty(name, value);
+}
 
 bool UserPrivate::equalsTo(const DataPrivate *o) const
 {
@@ -138,6 +205,7 @@ bool UserPrivate::equalsTo(const DataPrivate *o) const
            && active == other->active
            && profile == other->profile
            && role == other->role
+           && groups == other->groups
            && PrivilegedDataPrivate::equalsTo(o);
 }
 
@@ -146,6 +214,7 @@ void UserPrivate::clear()
     password.clear();
     active = false;
     role.clear();
+    groups.clear();
     PrivilegedDataPrivate::clear();
 }
 

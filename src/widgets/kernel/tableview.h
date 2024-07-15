@@ -7,10 +7,9 @@
 
 #include <QtWidgets/qtableview.h>
 
-class QSqlRecord;
-class QSqlQueryModel;
-
 namespace Systemus {
+
+class DataModel;
 
 class SYSTEMUS_WIDGETS_EXPORT TableView : public QTableView
 {
@@ -22,26 +21,28 @@ public:
 
     template<typename T>
     T currentData() const
-    { return Data::fromSqlRecord<T>(currentRecord()); }
-    QSqlRecord currentRecord() const;
+    { return currentData().to<T>(); }
+    Data currentData() const;
 
     template<typename T>
     QList<T> selectedData() const
-    { return Data::fromSqlRecords<T>(selectedRecords()); }
-    QList<QSqlRecord> selectedRecords() const;
+    {
+        QList<T> data;
+        for (const Data &d : selectedData())
+            data.append(d.to<T>());
+        return data;
+    }
+    QList<Data> selectedData() const;
 
     template<typename T>
     T dataAt(const QPoint &pos) const
-    { return Data::fromSqlRecord<T>(recordAt(pos)); }
-    QSqlRecord recordAt(const QPoint &pos) const;
+    { return dataAt(pos).to<T>(); }
+    Data dataAt(const QPoint &pos) const;
 
-    Q_SIGNAL void recordDoubleClicked(const QSqlRecord &record);
+    Q_SIGNAL void dataDoubleClicked(const Data &data);
 
-    QSqlQueryModel *model() const;
-    void setModel(QSqlQueryModel *model);
-
-protected:
-    Q_SLOT virtual void prepare();
+    DataModel *model() const;
+    void setModel(DataModel *model);
 
 private:
     Q_SLOT void processDoubleClick(const QModelIndex &index);

@@ -11,6 +11,9 @@ class RolePrivate : public PrivilegedDataPrivate
 public:
     RolePrivate();
     RolePrivate(const RolePrivate &other) = default;
+
+    int dataType() const override
+    { return RoleDataType; }
 };
 
 }

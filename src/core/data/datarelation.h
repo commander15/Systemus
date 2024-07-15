@@ -3,19 +3,16 @@
 
 #include <SystemusCore/global.h>
 #include <SystemusCore/data.h>
-#include <SystemusCore/private/data_p.h> // Fix required: public interface must not depend on private one !
 
 #include <QtSql/qsqlrecord.h>
+#include <QtSql/qsqlfield.h>
 
-#include <QtCore/qshareddata.h>
-#include <QtCore/qjsondocument.h>
 #include <QtCore/qjsonobject.h>
 #include <QtCore/qjsonarray.h>
 
 namespace Systemus {
 
-template<typename ForeignData>
-class DataRelation
+class SYSTEMUS_CORE_EXPORT AbstractDataRelation
 {
 public:
     enum RelationshipType {
@@ -25,53 +22,40 @@ public:
         ManyToManyRelationship
     };
 
-    bool operator==(const DataRelation<ForeignData> &other) const
-    { return _name == other._name; }
-    inline bool operator!=(const DataRelation<ForeignData> &other) const
-    { return !operator==(other); }
-
-    QString name() const
-    { return _name; }
-    void setName(const QString &name)
-    { _name = name; }
+    QString name() const;
+    void setName(const QString &name);
 
     virtual bool isEmpty() const = 0;
     virtual void clear() = 0;
 
-    void dumpInfo() const
-    {
-        const QJsonValue value = toJson();
-        QJsonDocument doc;
-        if (value.isObject())
-            doc.setObject(value.toObject());
-        else
-            doc.setArray(value.toArray());
-        qDebug().noquote() << doc.toJson(QJsonDocument::Indented);
-    }
+    void dumpInfo() const;
 
     virtual QJsonValue toJson() const = 0;
 
-    bool get(const Data *primary)
-    { return get(*primary); }
-
-    bool get(const Data &primary)
-    {
-        bool ok;
-        QSqlQuery query = primary.exec(selectStatement(primary), &ok);
-
-        if (ok) {
-            clear();
-            while (query.next()) {
-                ForeignData data = dataFromRecord(query.record());
-                data.getExtras();
-                saveData(data);
-            }
-            return true;
-        } else
-            return false;
-    }
+    bool get(const Data *primary);
+    bool get(const Data &primary);
 
     virtual int relationshipType() const = 0;
+
+protected:
+    virtual void processRecord(const QSqlRecord &record) = 0;
+
+    virtual QString selectStatement(const Data &primary) const = 0;
+
+    QString generateSelectStatement(const QString &table, const QSqlRecord &record) const;
+    QString generateSelectStatement(const QString &table, const QSqlRecord &record, const QString &filter) const;
+
+    QString _name;
+};
+
+template<typename ForeignData>
+class SYSTEMUS_CORE_EXPORT DataRelation : public AbstractDataRelation
+{
+public:
+    bool operator==(const DataRelation<ForeignData> &other) const
+    { return _name == other._name; }
+    inline bool operator!=(const DataRelation<ForeignData> &other) const
+    { return !operator==(other); }
 
 protected:
     virtual ForeignData dataFromRecord(const QSqlRecord &record)
@@ -79,22 +63,8 @@ protected:
 
     virtual void saveData(const ForeignData &data) = 0;
 
-    virtual QString selectStatement(const Data &primary) const = 0;
-
-    QString generateSelectStatement(const QString &table, const QSqlRecord &record) const
-    { return generateSelectStatement(table, record, QString()); }
-    QString generateSelectStatement(const QString &table, const QSqlRecord &record, const QString &filter) const
-    {
-        QString statement = Data::driver()->sqlStatement(QSqlDriver::SelectStatement, table, record, false);
-
-        if (!filter.isEmpty())
-            statement.append(" WHERE " + filter);
-
-        return statement;
-    }
-
-private:
-    QString _name;
+    void processRecord(const QSqlRecord &record) override
+    { saveData(dataFromRecord(record)); }
 };
 
 template<typename ForeignData>
@@ -119,11 +89,17 @@ public:
     ForeignData *operator->()
     { return &_data; }
 
-    const ForeignData &data() const
+    ForeignData data() const
     { return _data; }
 
-    ForeignData &data()
-    { return _data; }
+    void setData(const ForeignData &data)
+    { _data = data; }
+
+    SingleRelation<ForeignData> &operator=(const SingleRelation<ForeignData> &other)
+    { _data = other._data; DataRelation<ForeignData>::operator=(other); return *this; }
+
+    SingleRelation<ForeignData> &operator=(const ForeignData &other)
+    { _data = other._data; return *this; }
 
     bool isEmpty() const override
     { return _data.isEmpty(); }
@@ -140,13 +116,12 @@ protected:
 
     QString selectStatement(const Data &primary) const override
     {
-        const DataInfo info = primary.dataInfo();
         const DataInfo foreignInfo = DataInfo::fromType<ForeignData>();
 
         QSqlRecord record = foreignInfo.record();
 
-        const QString field = foreignInfo.foreignFieldName();
-        const QString filter = QStringLiteral("id = %1").arg(primary.property(field).toInt());
+        const QString property = foreignInfo.foreignPropertyName();
+        const QString filter = QStringLiteral("id = %1").arg(primary.property(property).toInt());
 
         return this->generateSelectStatement(foreignInfo.tableName(), record, filter);
     }
@@ -271,7 +246,7 @@ protected:
             field.setName(foreignInfo.tableName() + '.' + field.name());
             record.replace(0, field);
 
-            const QList<QSqlField> fields = DataInfoPrivate::fieldsFromString(_junctionFields.join(','), _junctionTable, this->name());
+            const QList<QSqlField> fields = DataInfo::fieldsFromString(_junctionFields.join(','), _junctionTable, this->name());
             for (const QSqlField &field : fields)
                 record.append(field);
         }

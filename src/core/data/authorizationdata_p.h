@@ -32,8 +32,8 @@ public:
         DataPrivate::clear();
     }
 
-    inline DataType dataType() const override
-    { return AccessControlDataType; }
+    inline int dataType() const override
+    { return AuthorizationDataType; }
 
     QString name;
     QString description;

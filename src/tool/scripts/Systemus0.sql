@@ -1,31 +1,45 @@
 CREATE TABLE IF NOT EXISTS Systems (
-    id   INTEGER     PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(20) NOT NULL
+    id      INTEGER     PRIMARY KEY AUTO_INCREMENT,
+    name    VARCHAR(32) UNIQUE NOT NULL,
+    version VARCHAR(16) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS SystemSettings (
+    id    INTEGER      PRIMARY KEY AUTO_INCREMENT,
+    name  VARCHAR(32)  NOT NULL,
+    value VARCHAR(128),
+    type  VARCHAR(16)  NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS SystemNotifications (
+    id    INTEGER       PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(32)   NOT NULL,
+    text  VARCHAR(255)  NOT NULL,
+    data  VARCHAR(1024),
+    type  VARCHAR(16)   DEFAULT 'Broadcast',
+    date  DATE          NOT NULL,
+    time  TIME          NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS SystemInstallations (
-    id            INTEGER PRIMARY KEY AUTO_INCREMENT,
-    version_major INTEGER NOT NULL CHECK(version_major >= 0),
-    version_minor INTEGER NOT NULL CHECK(version_minor >= 0),
-    version_patch INTEGER NOT NULL CHECK(version_patch >= 0),
-    version_code  INTEGER NOT NULL CHECK(version_code >= 0),
-    date          DATE    NOT NULL,
-    time          TIME    NOT NULL,
-    system_id     INTEGER NOT NULL
+    id      INTEGER     PRIMARY KEY AUTO_INCREMENT,
+    version VARCHAR(10) NOT NULL,
+    date    DATE        NOT NULL,
+    time    TIME        NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Users (
-    id            INTEGER     PRIMARY KEY AUTO_INCREMENT,
-    name          VARCHAR(30) UNIQUE NOT NULL,
+    id            INTEGER      PRIMARY KEY AUTO_INCREMENT,
+    name          VARCHAR(30)  UNIQUE NOT NULL,
     description   VARCHAR(255),
     password      VARCHAR(255) NOT NULL,
-    active        BOOLEAN     DEFAULT TRUE,
+    active        BOOLEAN      DEFAULT TRUE,
     logged_date   DATE,
     logged_time   TIME,
-    creation_date DATE        NOT NULL,
-    creation_time TIME        NOT NULL,
-    profile_id    INTEGER     NOT NULL,
-    role_id       INTEGER     NOT NULL
+    creation_date DATE         NOT NULL,
+    creation_time TIME         NOT NULL,
+    profile_id    INTEGER      NOT NULL,
+    role_id       INTEGER      NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Profiles (
@@ -70,12 +84,6 @@ CREATE TABLE IF NOT EXISTS Permissions (
     creation_time TIME         NOT NULL
 );
 
-/* Relationships on Systems */
-
-ALTER TABLE SystemInstallations
-ADD CONSTRAINT FK_SystemInstallations_00
-FOREIGN KEY(system_id) REFERENCES Systems(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
 /* Relationships on Users */
 
 ALTER TABLE Users
@@ -100,7 +108,6 @@ CREATE TABLE IF NOT EXISTS UserGroups (
 
 CREATE TABLE IF NOT EXISTS UserPrivileges (
     id           INTEGER PRIMARY KEY AUTO_INCREMENT,
-    active       BOOLEAN DEFAULT TRUE,
     issue_date   DATE    NOT NULL,
     issue_time   TIME    NOT NULL,
     privilege_id INTEGER NOT NULL,
@@ -113,7 +120,6 @@ CREATE TABLE IF NOT EXISTS UserPrivileges (
 
 CREATE TABLE IF NOT EXISTS UserPermissions (
     id            INTEGER PRIMARY KEY AUTO_INCREMENT,
-    active        BOOLEAN DEFAULT TRUE,
     issue_date    DATE    NOT NULL,
     issue_time    TIME    NOT NULL,
     permission_id INTEGER NOT NULL,
@@ -128,7 +134,6 @@ CREATE TABLE IF NOT EXISTS UserPermissions (
 
 CREATE TABLE IF NOT EXISTS RolePrivileges (
     id           INTEGER PRIMARY KEY AUTO_INCREMENT,
-    active       BOOLEAN DEFAULT TRUE,
     issue_date   DATE    NOT NULL,
     issue_time   TIME    NOT NULL,
     privilege_id INTEGER NOT NULL,
@@ -141,7 +146,6 @@ CREATE TABLE IF NOT EXISTS RolePrivileges (
 
 CREATE TABLE IF NOT EXISTS RolePermissions (
     id            INTEGER PRIMARY KEY AUTO_INCREMENT,
-    active        BOOLEAN DEFAULT TRUE,
     issue_date    DATE    NOT NULL,
     issue_time    TIME    NOT NULL,
     permission_id INTEGER NOT NULL,
@@ -156,7 +160,6 @@ CREATE TABLE IF NOT EXISTS RolePermissions (
 
 CREATE TABLE IF NOT EXISTS GroupPrivileges (
     id           INTEGER PRIMARY KEY AUTO_INCREMENT,
-    active       BOOLEAN DEFAULT TRUE,
     issue_date   DATE    NOT NULL,
     issue_time   TIME    NOT NULL,
     privilege_id INTEGER NOT NULL,
@@ -169,7 +172,6 @@ CREATE TABLE IF NOT EXISTS GroupPrivileges (
 
 CREATE TABLE IF NOT EXISTS GroupPermissions (
     id            INTEGER PRIMARY KEY AUTO_INCREMENT,
-    active        BOOLEAN DEFAULT TRUE,
     issue_date    DATE    NOT NULL,
     issue_time    TIME    NOT NULL,
     permission_id INTEGER NOT NULL,
@@ -184,7 +186,6 @@ CREATE TABLE IF NOT EXISTS GroupPermissions (
 
 CREATE TABLE IF NOT EXISTS PrivilegePermissions (
     id            INTEGER PRIMARY KEY AUTO_INCREMENT,
-    active        BOOLEAN DEFAULT TRUE,
     issue_date    DATE    NOT NULL,
     issue_time    TIME    NOT NULL,
     permission_id INTEGER NOT NULL,

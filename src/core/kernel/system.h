@@ -1,54 +1,73 @@
+#ifndef SYSTEMUS_SYSTEM_H
+#define SYSTEMUS_SYSTEM_H
+
 #include <SystemusCore/global.h>
-#include <SystemusCore/user.h>
 
 #include <QtCore/qobject.h>
-#include <QtCore/qversionnumber.h>
-#include <QtCore/qdatetime.h>
 
-class QSqlDatabase;
+class QVersionNumber;
 
 namespace Systemus {
 
+class User;
+//class SystemNotification;
+
+class SystemPrivate;
 class SYSTEMUS_CORE_EXPORT System : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString name             READ name             WRITE setName NOTIFY nameChanged)
-    Q_PROPERTY(QString version          READ versionString                  NOTIFY versionChanged)
-    Q_PROPERTY(QDate   installationDate READ installationDate               NOTIFY versionChanged)
-    Q_PROPERTY(QTime   installationTime READ installationTime               NOTIFY versionChanged)
-    Q_PROPERTY(User    user             READ user                           NOTIFY userChanged)
 
 public:
-    ~Systemus();
-    
+    ~System();
+
     QString name() const;
-    Q_SLOT void setName(const QString &name);
-    Q_SIGNAL void nameChanged(const QString &name);
-    
-    int versionCode() const;
-    QString versionString() const;
     QVersionNumber version() const;
-    Q_SIGNAL void versionChanged(const QVersionNumber &version);
-    
-    QDate installationDate() const;
-    QDate installationTime() const;
-    
+
+    bool hasSetting(const QString &name) const;
+    QVariant setting(const QString &name) const;
+    QVariant setting(const QString &name, const QVariant &defaultValue) const;
+    void setSetting(const QString &name, const QVariant &value);
+
     User user() const;
     Q_SIGNAL void userChanged(const User &user);
-    
-    QSqlDatabase database() const;
-    void setDatabase(const QSqlDatabase &db);
-    void setDatabase(const QString &name);
-    
-    void loadSettings(QSetting &setings);
-    void saveSettings(QSettings *settings);
-    
+
+    bool isOnline() const;
+    Q_SIGNAL void online();
+    Q_SIGNAL void offline();
+    Q_SIGNAL void onlineStateChanged(bool online);
+
+    int heartBeatInterval() const;
+    void setHeartInterval(int interval);
+
+    Q_SIGNAL void notify();
+
+    //Q_SIGNAL void notificationReceived(const SystemNotification &notification);
+
     static System *instance();
 
 private:
-    System();
+    System(QObject *parent = nullptr);
 
-    static QScopedPointer<System> m_instance;
+    Q_SLOT void setUser(const User &user);
+
+    QScopedPointer<SystemPrivate> d;
+    static QScopedPointer<System> _instance;
+
+    friend class Authenticator;
 };
 
+/*class SystemNotification;
+class SYSTEMUS_CORE_EXPORT SystemNotification
+{
+public:
+    QString title() const;
+    QString text() const;
+    QVariant data() const;
+    QString type() const;
+    QDate date() const;
+    QTime time() const;
+};*/
+
 }
+
+#endif // SYSTEMUS_SYSTEM_H
