@@ -50,7 +50,7 @@ PrivilegedData::PrivilegedData() :
 }
 
 PrivilegedData::PrivilegedData(const PrivilegedData &other) :
-    AuthorizationData(other)
+    AuthorizationData(other, false)
 {
 }
 
@@ -59,8 +59,8 @@ PrivilegedData::PrivilegedData(PrivilegedDataPrivate *data) :
 {
 }
 
-PrivilegedData::PrivilegedData(const PrivilegedData &other, bool transferProperties) :
-    AuthorizationData(other, transferProperties)
+PrivilegedData::PrivilegedData(const PrivilegedData &other, bool adapt) :
+    AuthorizationData(other, adapt)
 {
 }
 
@@ -117,11 +117,11 @@ int PrivilegePrivate::permissionIndex(const QString &name) const
     return -1;
 }
 
-bool PrivilegePrivate::equalsTo(const DataPrivate *o) const
+bool PrivilegePrivate::equals(const DataPrivate *o) const
 {
     const PrivilegePrivate *other = static_cast<const PrivilegePrivate *>(o);
     return permissions == other->permissions
-           && AuthorizationDataPrivate::equalsTo(o);
+           && AuthorizationDataPrivate::equals(o);
 }
 
 void PrivilegePrivate::clear()
@@ -130,6 +130,8 @@ void PrivilegePrivate::clear()
     permissions.clear();
     AuthorizationDataPrivate::clear();
 }
+
+
 
 PrivilegedDataPrivate::PrivilegedDataPrivate(const QString &context, bool withJunctionData) :
     privileges(context + "Privileges", (withJunctionData ? QStringList() << "issue_date" << "issue_time" : QStringList())),
@@ -163,12 +165,12 @@ int PrivilegedDataPrivate::permissionIndex(const QString &name) const
     return -1;
 }
 
-bool PrivilegedDataPrivate::equalsTo(const DataPrivate *o) const
+bool PrivilegedDataPrivate::equals(const DataPrivate *o) const
 {
     const PrivilegedDataPrivate *other = static_cast<const PrivilegedDataPrivate *>(o);
     return privileges == other->privileges
            && permissions == other->permissions
-           && AuthorizationDataPrivate::equalsTo(o);
+           && AuthorizationDataPrivate::equals(o);
 }
 
 void PrivilegedDataPrivate::clear()

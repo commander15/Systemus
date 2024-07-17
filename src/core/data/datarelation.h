@@ -112,7 +112,8 @@ public:
 
 protected:
     void saveData(const ForeignData &data) override
-    { _data = data; }
+    { _data = data;
+    }
 
     QString selectStatement(const Data &primary) const override
     {

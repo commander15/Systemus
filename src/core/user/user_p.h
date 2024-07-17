@@ -9,13 +9,13 @@
 
 namespace Systemus {
 
-class UserProfilePrivate : public DataPrivate
+class UserProfilePrivate : public DefaultDataPrivate
 {
 public:
     UserProfilePrivate() = default;
     UserProfilePrivate(const UserProfilePrivate &other) = default;
 
-    bool equalsTo(const DataPrivate *o) const override;
+    bool equals(const DataPrivate *o) const override;
 
     void clear() override;
 
@@ -35,10 +35,7 @@ public:
 
     bool hasPermission(const QString &name) const override;
 
-    QVariant property(const QString &name) const;
-    void setProperty(const QString &name, const QVariant &value);
-
-    bool equalsTo(const DataPrivate *o) const override;
+    bool equals(const DataPrivate *o) const override;
 
     void clear() override;
 
@@ -48,8 +45,11 @@ public:
     QString password;
     bool active = false;
 
+    QDate lastLogDate;
+    QTime lastLogTime;
+
     OneToOneRelation<UserProfile> profile;
-    OneToOneRelation<Role> role;
+    ManyToOneRelation<Role> role;
     ManyToManyRelation<Group> groups;
 };
 

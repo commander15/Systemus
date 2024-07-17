@@ -37,7 +37,7 @@ class SYSTEMUS_CORE_EXPORT PrivilegedData : public AuthorizationData
 public:
     PrivilegedData();
     PrivilegedData(const PrivilegedData &other);
-    PrivilegedData(const PrivilegedData &other, bool transferProperties);
+    PrivilegedData(const PrivilegedData &other, bool adapt);
     virtual ~PrivilegedData();
 
     PrivilegedData &operator=(const PrivilegedData &other);

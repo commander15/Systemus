@@ -20,7 +20,7 @@ class SYSTEMUS_CORE_EXPORT AuthorizationData : public Data
 public:
     AuthorizationData();
     AuthorizationData(const AuthorizationData &other);
-    AuthorizationData(const AuthorizationData &other, bool transferProperties);
+    AuthorizationData(const AuthorizationData &other, bool adapt);
     virtual ~AuthorizationData();
 
     AuthorizationData &operator=(const AuthorizationData &other);
@@ -34,11 +34,11 @@ public:
     QDate creationDate() const;
     QTime creationTime() const;
 
-    virtual void setProperty(const QString &name, const QVariant &value) override;
+    bool saveReadOnlyProperty(const QString &name, const QVariant &value) override;
 
-    virtual bool isValid() const override;
+    bool isValid() const override;
 
-    virtual bool insert() override;
+    bool insert() override;
 
 protected:
     AuthorizationData(AuthorizationDataPrivate *data);

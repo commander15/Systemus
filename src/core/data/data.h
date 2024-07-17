@@ -32,6 +32,8 @@ public: \
     { return Systemus::Data::fromSqlQuery<Class>(query); } \
     static inline QList<Class> fromSqlRecords(const QList<QSqlRecord> &records) \
     { return Systemus::Data::fromSqlRecords<Class>(records); } \
+    static inline Class fromId(int id) \
+    { return Systemus::Data::fromId<Class>(id); } \
     static inline Class fromSqlRecord(const QSqlRecord &record) \
     { return Systemus::Data::fromSqlRecord<Class>(record); } \
 private:
@@ -44,7 +46,6 @@ namespace Systemus {
 
 class DataInfo;
 class DataSearch;
-class DataStorage;
 
 class DataPrivate;
 class SYSTEMUS_CORE_EXPORT Data
@@ -55,7 +56,7 @@ class SYSTEMUS_CORE_EXPORT Data
 public:
     Data();
     Data(const Data &other);
-    Data(const Data &other, bool transferProperties);
+    Data(const Data &other, bool adapt);
     virtual ~Data();
 
     Data &operator=(const Data &other);
@@ -65,27 +66,28 @@ public:
     int id() const;
     void setId(int id);
 
+    bool hasProperty(const QString &name) const;
     QVariant property(const QString &name) const;
-    virtual void setProperty(const QString &name, const QVariant &value);
-    QMetaProperty metaPropertyByName(const QString &name) const;
-
-    void fill(const Data &other);
-    void fill(const QSqlRecord &record);
-
-    DataInfo dataInfo() const;
+    void setProperty(const QString &name, const QVariant &value);
 
     virtual bool isValid() const;
-
+    virtual bool isEmpty() const;
     void dumpInfos() const;
 
-    virtual bool isEmpty() const;
+    void fill(const Data &other, bool withId = false);
+    void fill(const QSqlRecord &record, bool withId = false);
     Q_INVOKABLE virtual void clear();
 
-    Q_INVOKABLE inline bool get()
-    { return get("id = " + QString::number(id()), true); }
-    Q_INVOKABLE inline bool get(int id)
-    { return get("id = " + QString::number(id), true); }
-    Q_INVOKABLE virtual bool get(const QString &filter, bool withExtras = true);
+    template<typename T> T to() const;
+    virtual QSqlRecord toSqlRecord() const;
+    virtual QJsonObject toJsonObject() const;
+
+    //DataInfo dataInfo() const;
+
+    Q_INVOKABLE bool get();
+    Q_INVOKABLE bool get(int id);
+    Q_INVOKABLE bool get(const QString &filter, bool withExtras = true);
+    virtual bool getData(const QString &filter);
     virtual bool getExtras();
 
     Q_INVOKABLE bool save();
@@ -94,11 +96,8 @@ public:
 
     Q_INVOKABLE virtual bool deleteData();
 
+    DataInfo dataInfo() const;
     QSqlError lastError() const;
-
-    template<typename T> T to() const;
-    QSqlRecord toSqlRecord() const;
-    QJsonObject toJsonObject() const;
 
     const void *internalData() const;
     void *internalData();
@@ -129,6 +128,9 @@ public:
     static QList<T> fromSqlRecords(const QList<QSqlRecord> &records);
 
     template<typename T>
+    static T fromId(int id);
+
+    template<typename T>
     static T fromSqlRecord(const QSqlRecord &record);
 
     bool operator==(const Data &other) const;
@@ -141,15 +143,13 @@ protected:
 
     virtual void initData();
 
+    virtual bool saveReadOnlyProperty(const QString &name, const QVariant &value);
+
     QByteArray instanceClassName() const;
     virtual const QMetaObject *instanceMetaObject() const;
 
     QByteArray dataClassName() const;
-
     void setDataClassName(const QByteArray &name);
-
-    virtual void fillRecord(QSqlRecord *record) const;
-    virtual void extractRecord(const QSqlRecord &record);
 
     QSqlQuery exec(const QString &query, bool *ok = nullptr) const;
 
@@ -167,6 +167,7 @@ private:
 
     void bindQueryValues(QSqlQuery &query) const;
 
+    friend class AdapterDataPrivate;
     friend class AbstractDataRelation;
     friend class DataModel;
 
@@ -245,7 +246,22 @@ public:
     QSqlRecord displayRecord() const;
 
     QStringList searchFieldNames() const;
+    //QString searchFieldName(int index) const;
+    //QSqlField searchField(int index) const;
     QStringList searchPropertyNames() const;
+    //QString searchPropertyName(int index) const;
+    //QMetaProperty searchProperty(int index);
+    //int searchCount() const;
+    //QSqlRecord searchRecord() const;
+
+    QStringList secretFieldNames() const;
+    QString secretFieldName(int index) const;
+    QSqlField secretField(int index) const;
+    QStringList secretPropertyNames() const;
+    QString secretPropertyName(int index) const;
+    QMetaProperty secretProperty(int index) const;
+    int secretCount() const;
+    QSqlRecord secretRecord() const;
 
     QStringList fieldNames() const;
     QString fieldName(int index) const;
@@ -262,8 +278,8 @@ public:
 
     void dumpInfos();
 
-    Data newData() const;
-    Data newData(const QSqlRecord &record) const;
+    Data *newData() const;
+    Data *newData(const QSqlRecord &record) const;
 
     QList<Data> find(const DataSearch &query, QSqlError *error) const;
 
@@ -285,6 +301,7 @@ public:
     static DataInfo fromTable(const QString &tableName);
     static DataInfo fromTableRecord(const QString &tableName, const QSqlRecord &record);
 
+    static bool isRegistered(const QByteArray &className);
     static void registerInfo(const QByteArray &className, const DataInfo &info);
     static void registerFindFunction(const QByteArray &className, const std::function<FindDataFunction> &function);
     static void registerTransferFunction(const QByteArray &className, const std::function<DataTransferFunction> &function);
@@ -308,6 +325,9 @@ public:
     DataRegistration &jsonGenerator(const std::function<JsonGenerationFunction> &function);
 
 private:
+    inline bool isValid() const
+    { return !_className.isEmpty(); }
+
     const QByteArray _className;
 };
 
@@ -384,11 +404,21 @@ QList<T> Data::fromSqlRecords(const QList<QSqlRecord> &records)
     return data;
 }
 
+
+template<typename T>
+T Data::fromId(int id)
+{
+    T data;
+    data.get(id);
+    return data;
+}
+
 template<typename T>
 T Data::fromSqlRecord(const QSqlRecord &record)
 {
+    const DataInfo info = DataInfo::fromType<T>();
     T data;
-    data.extractRecord(record);
+    data.fill(record, true);
     data.getExtras();
     return data;
 }
@@ -399,6 +429,9 @@ template<typename T>
 Systemus::DataRegistration sRegisterType(Systemus::DataInfo info)
 {
     const QByteArray className(T::staticMetaObject.className());
+
+    if (Systemus::DataInfo::isRegistered(className))
+        return Systemus::DataRegistration(QByteArray());
 
     Systemus::DataInfo::registerInfo(className, info);
 
@@ -414,6 +447,9 @@ Systemus::DataRegistration sRegisterType(Systemus::DataInfo info)
 
     return Systemus::DataRegistration(className);
 }
+
+template<>
+SYSTEMUS_CORE_EXPORT Systemus::DataPrivate *QSharedDataPointer<Systemus::DataPrivate>::clone();
 
 template<typename T>
 Systemus::DataRegistration sRegisterType()

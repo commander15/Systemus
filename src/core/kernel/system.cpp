@@ -22,8 +22,7 @@ System::System(QObject *parent) :
             emit this->offline();
     });
 
-    d->getData();
-    d->syncSettings();
+    QTimer::singleShot(0, this, &System::sync);
 
     _s_register_internal_types();
 }
@@ -59,10 +58,9 @@ QVariant System::setting(const QString &name, const QVariant &defaultValue) cons
 
 void System::setSetting(const QString &name, const QVariant &value)
 {
-    if (!d->settings.contains(d->settingKey(name)) || d->settings.value(d->settingKey(name)) != value) {
+    if (!d->settings.contains(d->settingKey(name)) || d->settings.value(d->settingKey(name)) != value)
         d->settings.setValue(d->settingKey(name), value);
-        d->dirtySettingKeys.append(name);
-    }
+    d->dirtySettingKeys.append(name);
 }
 
 User System::user() const
@@ -83,6 +81,12 @@ int System::heartBeatInterval() const
 void System::setHeartInterval(int interval)
 {
     d->timer.setInterval(interval);
+}
+
+void System::sync()
+{
+    d->getData();
+    d->syncSettings(true);
 }
 
 System *System::instance()
@@ -112,6 +116,7 @@ SystemPrivate::SystemPrivate(System *q) :
     settings.endGroup();
 
     timer.setInterval(3000);
+    timer.start();
     connect(&timer, &QTimer::timeout, this, &SystemPrivate::update);
 
     QTimer::singleShot(0, this, [=] { setOnline(!name.isEmpty()); });
@@ -162,7 +167,7 @@ bool SystemPrivate::getData()
     return ok;
 }
 
-bool SystemPrivate::syncSettings()
+bool SystemPrivate::syncSettings(bool force)
 {
     const QString table = QStringLiteral("SystemSettings");
     QSqlRecord record;
@@ -175,15 +180,37 @@ bool SystemPrivate::syncSettings()
 
     settings.beginGroup(qApp->applicationName());
 
-    if (!dirtySettingKeys.isEmpty()) {
+    if (settingKeyIds.isEmpty() || dirtySettingKeys.isEmpty()) {
+        QString statement = Data::driver()->sqlStatement(QSqlDriver::SelectStatement, table, record, false);
+
+        QSqlQuery query = Data::execQuery(statement, &ok);
+        if (ok) {
+            settingKeyIds.clear();
+            while (query.next()) {
+                const QString name = query.value(1).toString();
+                settingKeyIds.insert(name, query.value(0).toInt());
+                QVariant value = query.value(2);
+                if (value.convert(metaTypeFromSettingType(query.value(3).toInt())))
+                    settings.setValue(name, value);
+            }
+        }
+    } else {
+        force = true;
+    }
+
+    if (force) {
         Data::beginTransaction();
 
         for (const QString &name : dirtySettingKeys) {
+            const QVariant value = settings.value(name);
+
             record.setValue(1, name);
             record.setValue(2, settings.value(name).toString());
-            record.setValue(3, settings.value(name).typeName());
+            record.setValue(3, settingTypeFromMetatype(value.metaType()));
 
             QString statement;
+
+            // Bug: saves data with string type only (30)
 
             if (!settingKeyIds.contains(name)) {
                 statement = Data::driver()->sqlStatement(QSqlDriver::InsertStatement, table, record, false);
@@ -203,19 +230,6 @@ bool SystemPrivate::syncSettings()
 
         Data::commitTransaction();
         dirtySettingKeys.clear();
-    } else {
-        QString statement = Data::driver()->sqlStatement(QSqlDriver::SelectStatement, table, record, false);
-
-        QSqlQuery query = Data::execQuery(statement, &ok);
-        if (ok) {
-            settingKeyIds.clear();
-            while (query.next()) {
-                settingKeyIds.insert(query.value(1).toString(), query.value(0).toInt());
-                QVariant value = query.value(2);
-                if (value.convert(QMetaType::fromName(query.value(3).toByteArray())))
-                    settings.setValue(query.value(1).toString(), value);
-            }
-        }
     }
 
     settings.endGroup();
@@ -225,6 +239,54 @@ bool SystemPrivate::syncSettings()
 QString SystemPrivate::settingKey(const QString &name) const
 {
     return qApp->applicationName() + '/' + name;
+}
+
+int SystemPrivate::settingTypeFromMetatype(const QMetaType &type)
+{
+    switch (type.id()) {
+    case QMetaType::Int:
+        return SettingType::Int;
+    case QMetaType::Double:
+        return SettingType::Double;
+    case QMetaType::Bool:
+        return SettingType::Bool;
+    case QMetaType::QString:
+        return SettingType::String;
+    case QMetaType::QDate:
+        return SettingType::Date;
+    case QMetaType::QTime:
+        return SettingType::Time;
+    case QMetaType::QDateTime:
+        return SettingType::DateTime;
+    case QMetaType::QByteArray:
+        return SettingType::ByteArray;
+    default:
+        return SettingType::Unknown;
+    }
+}
+
+QMetaType SystemPrivate::metaTypeFromSettingType(int type)
+{
+    switch (type) {
+    case SettingType::Int:
+        return QMetaType(QMetaType::Int);
+    case SettingType::Double:
+        return QMetaType(QMetaType::Double);
+    case SettingType::Bool:
+        return QMetaType(QMetaType::Bool);
+    case SettingType::String:
+        return QMetaType(QMetaType::QString);
+    case SettingType::Date:
+        return QMetaType(QMetaType::QDate);
+    case SettingType::Time:
+        return QMetaType(QMetaType::QTime);
+    case SettingType::DateTime:
+        return QMetaType(QMetaType::QDateTime);
+    case SettingType::ByteArray:
+        return QMetaType(QMetaType::QByteArray);
+    default:
+        return QMetaType(QMetaType::UnknownType);
+    }
 }
 
 }

@@ -13,7 +13,7 @@ User::User() :
 }
 
 User::User(const User &other) :
-    PrivilegedData(other, true)
+    PrivilegedData(other, false)
 {
 }
 
@@ -87,6 +87,19 @@ bool User::getExtras()
 {
     S_D(User);
     return PrivilegedData::getExtras() && d->profile.get(this) && d->role.get(this) && d->groups.get(this);
+}
+
+bool User::saveReadOnlyProperty(const QString &name, const QVariant &value)
+{
+    S_D(User);
+    if (name == "lastLogDate")
+        d->lastLogDate = value.toDate();
+    else if (name == "lastLogTime")
+        d->lastLogTime = value.toTime();
+    else
+        return PrivilegedData::saveReadOnlyProperty(name, value);
+
+    return true;
 }
 
 UserProfile::UserProfile() :
@@ -178,27 +191,7 @@ bool UserPrivate::hasPermission(const QString &name) const
     }
 }
 
-QVariant UserPrivate::property(const QString &name) const
-{
-    if (name == "password")
-        return password;
-    else if (name == "active")
-        return active;
-    else
-        return PrivilegedDataPrivate::property(name);
-}
-
-void UserPrivate::setProperty(const QString &name, const QVariant &value)
-{
-    if (name == "password")
-        password = value.toString();
-    else if (name == "active")
-        active = value.toBool();
-    else
-        PrivilegedDataPrivate::setProperty(name, value);
-}
-
-bool UserPrivate::equalsTo(const DataPrivate *o) const
+bool UserPrivate::equals(const DataPrivate *o) const
 {
     const UserPrivate *other = static_cast<const UserPrivate *>(o);
     return password == other->password
@@ -206,7 +199,7 @@ bool UserPrivate::equalsTo(const DataPrivate *o) const
            && profile == other->profile
            && role == other->role
            && groups == other->groups
-           && PrivilegedDataPrivate::equalsTo(o);
+           && PrivilegedDataPrivate::equals(o);
 }
 
 void UserPrivate::clear()
@@ -218,17 +211,19 @@ void UserPrivate::clear()
     PrivilegedDataPrivate::clear();
 }
 
-bool UserProfilePrivate::equalsTo(const DataPrivate *o) const
+bool UserProfilePrivate::equals(const DataPrivate *o) const
 {
     const UserProfilePrivate *other = static_cast<const UserProfilePrivate *>(o);
     return name == other->name
-           && DataPrivate::equalsTo(o);
+           && firstName == other->firstName
+           && DefaultDataPrivate::equals(o);
 }
 
 void UserProfilePrivate::clear()
 {
     name.clear();
-    DataPrivate::clear();
+    firstName.clear();
+    DefaultDataPrivate::clear();
 }
 
 }

@@ -5,6 +5,10 @@
 
 #include <SystemusCore/data.h>
 
+#include <QtSql/qsqlfield.h>
+
+#include <QtCore/qmetaobject.h>
+
 class SampleData : public Systemus::Data
 {
     Q_GADGET
@@ -17,6 +21,11 @@ class SampleData : public Systemus::Data
 
 public:
     SampleData() { init(); }
+
+    SampleData(const SampleData &other) : Systemus::Data(other, false),
+        name(other.name), description(other.description), sampleCount(other.sampleCount)
+    {}
+
     void initSample()
     { }
 
@@ -24,6 +33,8 @@ public:
     QString description;
     int sampleCount;
 };
+
+Q_DECLARE_METATYPE(SampleData)
 
 class DataInfoTest : public testing::Test
 {
@@ -33,5 +44,11 @@ protected:
 
     SampleData sample;
 };
+
+inline QMetaProperty property(const char *name, const QMetaObject *object)
+{ return object->property(object->indexOfProperty(name)); }
+
+inline bool operator==(const QMetaProperty &p1, const QMetaProperty &p2)
+{ return p1.name() == p2.name() && p1.enclosingMetaObject() == p2.enclosingMetaObject(); }
 
 #endif // DATAINFOTEST_H

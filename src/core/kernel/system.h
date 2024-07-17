@@ -39,6 +39,7 @@ public:
     int heartBeatInterval() const;
     void setHeartInterval(int interval);
 
+    Q_SLOT void sync();
     Q_SIGNAL void notify();
 
     //Q_SIGNAL void notificationReceived(const SystemNotification &notification);

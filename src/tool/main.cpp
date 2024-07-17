@@ -4,6 +4,8 @@
 #include "infoscommand.h"
 #include "installcommand.h"
 
+bool infoMode(const QString &mode);
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -11,9 +13,11 @@ int main(int argc, char *argv[])
 
     const QString mode = (argc > 1 ? argv[1] : QString());
     Command *command = nullptr;
+    QStringList arguments;
 
-    if (mode.isEmpty()) {
+    if (mode.isEmpty() || infoMode(mode)) {
         command = new InfosCommand();
+        arguments.append(mode);
     } else if (mode == "install") {
         command = new InstallCommand();
     } else if (mode == "update") {
@@ -25,12 +29,27 @@ int main(int argc, char *argv[])
     if (command) {
         QScopedPointer commandPointer(command);
 
-        QStringList arguments = app.arguments();
-        if (arguments.size() > 1)
-            arguments.remove(1);
-        return command->run(arguments);
+        QStringList runArguments;
+        {
+            const QStringList appArguments = app.arguments();
+
+            runArguments.append(appArguments.at(0));
+            runArguments.append(arguments);
+
+            for (int i(2); i < appArguments.size(); ++i)
+                runArguments.append(appArguments.at(i));
+        }
+
+        return command->run(runArguments);
     } else {
         QTextStream() << "error: unknown command" << Qt::endl;
         return UNKNWON_COMMAND_ERROR;
     }
+}
+
+bool infoMode(const QString &mode)
+{
+    QStringList modes;
+    modes << "users" << "roles" << "groups" << "privileges" << "permissions";
+    return modes.contains(mode);
 }

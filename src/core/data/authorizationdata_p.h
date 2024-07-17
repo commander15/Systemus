@@ -6,13 +6,13 @@
 
 namespace Systemus {
 
-class AuthorizationDataPrivate : public DataPrivate
+class AuthorizationDataPrivate : public DefaultDataPrivate
 {
 public:
     AuthorizationDataPrivate() = default;
     AuthorizationDataPrivate(const AuthorizationDataPrivate &other) = default;
 
-    virtual bool equalsTo(const DataPrivate *o) const override
+    virtual bool equals(const DataPrivate *o) const override
     {
         const AuthorizationDataPrivate *other = static_cast<const AuthorizationDataPrivate *>(o);
 
@@ -20,7 +20,7 @@ public:
                && description == other->description
                && creationDate == other->creationDate
                && creationTime == other->creationTime
-               && DataPrivate::equalsTo(o);
+               && DefaultDataPrivate::equals(o);
     }
 
     virtual void clear() override
@@ -29,8 +29,11 @@ public:
         description.clear();
         creationDate = QDate();
         creationTime = QTime();
-        DataPrivate::clear();
+        DefaultDataPrivate::clear();
     }
+
+    inline AuthorizationDataPrivate *clone() const override
+    { return new AuthorizationDataPrivate(*this); }
 
     inline int dataType() const override
     { return AuthorizationDataType; }

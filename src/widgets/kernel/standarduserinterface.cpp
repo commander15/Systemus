@@ -35,6 +35,8 @@ StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *pare
     ui->tableView->setModel(&d->model);
     connect(ui->tableView, &TableView::dataDoubleClicked, this, &StandardUserInterface::showData);
     connect(ui->tableView, &QWidget::customContextMenuRequested, this, &StandardUserInterface::showContextMenu);
+
+    connect(d->editAction, &QAction::visibleChanged, this, [this, d] { ui->editButton->setVisible(d->editAction->isVisible()); });
 }
 
 StandardUserInterface::~StandardUserInterface()
@@ -291,10 +293,10 @@ void StandardUserInterfacePrivate::refreshUi()
 
     bool selected = q->ui->tableView->currentIndex().isValid();
 
-    showAction->setEnabled(q->supportAction(UserInterface::ShowAction) && selected);
-    editAction->setEnabled(q->supportAction(UserInterface::EditAction) && selected);
-    deleteAction->setEnabled(q->supportAction(UserInterface::DeleteAction) && selected);
-    printAction->setEnabled(q->supportAction(UserInterface::PrintAction) && selected);
+    showAction->setVisible(q->supportAction(UserInterface::ShowAction) && selected);
+    editAction->setVisible(q->supportAction(UserInterface::EditAction) && selected);
+    deleteAction->setVisible(q->supportAction(UserInterface::DeleteAction) && selected);
+    printAction->setVisible(q->supportAction(UserInterface::PrintAction) && selected);
 }
 
 void StandardUserInterfacePrivate::translateUi()
@@ -317,6 +319,7 @@ void StandardUserInterfacePrivate::init()
     showAction->setIcon(QIcon(":/systemus/icons/action_show.png"));
     menu->addAction(showAction);
     QObject::connect(showAction, &QAction::triggered, q, &StandardUserInterface::showData);
+    //QObject::connect(showAction, &QAction::visibleChanged, );
 
     editAction = new QAction(menu);
     editAction->setIcon(QIcon(":/systemus/icons/action_edit.png"));

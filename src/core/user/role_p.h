@@ -12,6 +12,9 @@ public:
     RolePrivate();
     RolePrivate(const RolePrivate &other) = default;
 
+    RolePrivate *clone() const override
+    { return new RolePrivate(*this); }
+
     int dataType() const override
     { return RoleDataType; }
 };

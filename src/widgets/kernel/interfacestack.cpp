@@ -69,10 +69,10 @@ int InterfaceStack::indexOf(UserInterface *interface) const
 
 void InterfaceStack::showInterface()
 {
-    QAction *action = qobject_cast<QAction *>(sender());
-    for (int i = 0; i < count(); ++i) {
-        if (interface(i)->interfaceTitle() == action->text()) {
-            setCurrentIndex(i);
+    const QByteArray interfaceId = sender()->property("interfaceId").toByteArray();
+    for (int i(0); i < ui->stackedWidget->count(); ++i) {
+        if (ui->stackedWidget->widget(i)->property("interfaceId") == interfaceId) {
+            ui->stackedWidget->setCurrentIndex(i);
             break;
         }
     }

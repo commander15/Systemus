@@ -15,9 +15,12 @@ public:
 
     int permissionIndex(const QString &name) const;
 
-    bool equalsTo(const DataPrivate *o) const override;
+    bool equals(const DataPrivate *o) const override;
 
     void clear() override;
+
+    PrivilegePrivate *clone() const override
+    { return new PrivilegePrivate(*this); }
 
     int dataType() const override
     { return PrivilegeDataType; }
@@ -37,9 +40,15 @@ public:
     virtual bool hasPermission(const QString &name) const;
     int permissionIndex(const QString &name) const;
 
-    bool equalsTo(const DataPrivate *o) const override;
+    bool equals(const DataPrivate *o) const override;
 
     void clear() override;
+
+    PrivilegedDataPrivate *clone() const override
+    { return new PrivilegedDataPrivate(*this); }
+
+    int dataType() const override
+    { return PrivilegeDataType; }
 
     ManyToManyRelation<Privilege> privileges;
     ManyToManyRelation<Permission> permissions;

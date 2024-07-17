@@ -16,8 +16,12 @@
 
 namespace Systemus {
 
+/*!
+ * Constructs a default Data.
+ */
+
 Data::Data() :
-    d_ptr(new DataPrivate)
+    d_ptr(new DefaultDataPrivate())
 {
 }
 
@@ -31,30 +35,28 @@ Data::Data(const QSharedDataPointer<DataPrivate> &data) :
 {
 }
 
+/*!
+ * Constructs a copy of the data other passed as argument.
+ * \warning Don't use this constructor on base classes, see subclassing Data class section.
+ */
+
 Data::Data(const Data &other) :
     Data(other, true)
 {
 }
 
-Data::Data(const Data &other, bool transferProperties)
+Data::Data(const Data &other, bool adapt)
 {
-    if (transferProperties) {
-        DataPrivate *d = new DataPrivate(*other.d_ptr.get());
-
-        const DataInfo info = other.dataInfo();
-        for (int i(0); i < info.displayCount(); ++i) {
-            const QString property = info.displayPropertyName(i);
-            const QVariant value = other.property(property);
-            d->properties.insert(property, value);
-        }
-
-        d_ptr.reset(d);
-
-        auto transferFunction = DataInfoPrivate::transferFunctions.value(d_ptr->className, nullptr);
-        if (transferFunction) {
-            transferFunction(&other, this, 0);
+    if (adapt) {
+        QMetaType metaType = QMetaType::fromName(other.dataClassName());
+        if (metaType.isValid()) {
+            Data *otherCopy = static_cast<Data *>(metaType.create(&other));
+            d_ptr.reset(new AdapterDataPrivate(otherCopy));
         }
     }
+
+    if (!d_ptr)
+        d_ptr = other.d_ptr;
 }
 
 Data::~Data()
@@ -64,106 +66,108 @@ Data::~Data()
 Data &Data::operator=(const Data &other)
 {
     if (this != &other) {
-        d_ptr = other.d_ptr;
+        const QByteArray dataClassName = staticMetaObject.className();
+        bool attach = true;
+        if (instanceClassName() == dataClassName && other.instanceClassName() != dataClassName) {
+            QMetaType metaType = QMetaType::fromName(other.dataClassName());
+            if (metaType.isValid()) {
+                Data *otherCopy = static_cast<Data *>(metaType.create(&other));
+                d_ptr.reset(new AdapterDataPrivate(otherCopy));
+                attach = false;
+            } else {
+                qWarning() << "Systemus::Data: can't adapt " << other.instanceClassName() << "'s object to a generic data object"
+                            << "ensure that it has been registered with Q_DECLARE_METATYPE()";
+            }
+        }
+
+        if (attach)
+            d_ptr = other.d_ptr;
     }
+
     return *this;
 }
 
 void Data::init()
 {
     S_D(Data);
-
-    if (!d->initialized) {
-        initData();
-        d->initialized = true;
-    }
+    initData();
+    d->init();
 }
 
 int Data::id() const
 {
     S_D(const Data);
-    return d->id;
+    return d->id();
 }
 
 void Data::setId(int id)
 {
     S_D(Data);
-    d->id = id;
+    d->setId(id);
+}
+
+bool Data::hasProperty(const QString &name) const
+{
+    S_D(const Data);
+    return d->hasProperty(name, this);
 }
 
 QVariant Data::property(const QString &name) const
 {
     S_D(const Data);
-
-    const QMetaProperty property = metaPropertyByName(name);
-    if (property.isValid() && property.isReadable())
-        return property.readOnGadget(this);
-    else
-        return d->property(name);
+    return d->property(name, this);
 }
 
 void Data::setProperty(const QString &name, const QVariant &value)
 {
     S_D(Data);
-
-    const QMetaProperty property = metaPropertyByName(name);
-    if (property.isValid() && property.isWritable())
-        property.writeOnGadget(this, value);
-    else
-        d->setProperty(name, value);
-}
-
-QMetaProperty Data::metaPropertyByName(const QString &name) const
-{
-    const QMetaObject *metaObject = instanceMetaObject();
-    int propertyIndex = metaObject->indexOfProperty(name.toStdString().c_str());
-    return (propertyIndex >= 0 ? metaObject->property(propertyIndex) : QMetaProperty());
-}
-
-void Data::fill(const Data &other)
-{
-    S_D(Data);
-
-    const DataInfo info = dataInfo();
-    for (int i(1); i < info.count(); ++i) {
-        const QString property = info.fieldPropertyName(i);
-        setProperty(property, other.property(property));
-    }
-}
-
-void Data::fill(const QSqlRecord &record)
-{
-    S_D(Data);
-
-    const DataInfo info = dataInfo();
-    for (int i(1); i < info.count(); ++i)
-        if (record.contains(info.fieldName(i)))
-            setProperty(info.fieldPropertyName(i), record.value(info.fieldName(i)));
-}
-
-DataInfo Data::dataInfo() const
-{
-    S_D(const Data);
-    return DataInfo::fromName(d->className);
+    d->setProperty(name, value, this);
 }
 
 bool Data::isValid() const
 {
     S_D(const Data);
-    return d->id > 0;
-}
-
-void Data::dumpInfos() const
-{
-    QJsonDocument doc;
-    doc.setObject(toJsonObject());
-    qInfo().noquote() << doc.toJson(QJsonDocument::Indented);
+    return d->isValid();
 }
 
 bool Data::isEmpty() const
 {
     S_D(const Data);
-    return d->id == 0;
+    return d->isEmpty();
+}
+
+void Data::dumpInfos() const
+{
+    S_D(const Data);
+    QJsonDocument doc;
+    doc.setObject(toJsonObject());
+    qInfo().noquote() << doc.toJson(QJsonDocument::Indented);
+}
+
+void Data::fill(const Data &other, bool withId)
+{
+    S_D(Data);
+
+    const DataInfo info = d->dataInfo();
+    for (int i(withId ? 0 : 1); i < info.count(); ++i) {
+        const QString property = info.fieldPropertyName(i);
+        setProperty(property, other.property(property));
+    }
+}
+
+void Data::fill(const QSqlRecord &record, bool withId)
+{
+    S_D(Data);
+
+    if (withId) {
+        d->fillWithRecord(record, this);
+    } else {
+        QSqlRecord fillRecord(record);
+        int idIndex = fillRecord.indexOf(d->dataInfo().idFieldName());
+        if (idIndex >= 0)
+            fillRecord.remove(idIndex);
+        d->fillWithRecord(fillRecord, this);
+    }
 }
 
 void Data::clear()
@@ -172,18 +176,55 @@ void Data::clear()
     d->clear();
 }
 
+QSqlRecord Data::toSqlRecord() const
+{
+    S_D(const Data);
+
+    QSqlRecord record = d->dataInfo().record();
+    d->fillRecord(&record, this);
+    return record;
+}
+
+QJsonObject Data::toJsonObject() const
+{
+    S_D(const Data);
+
+    QJsonObject object;
+    d->fillJsonObject(&object, this);
+    return object;
+}
+
+bool Data::get()
+{
+    S_D(Data);
+    return getData(d->dataInfo().idFieldName() + " = " + QString::number(d->id())) && getExtras();
+}
+
+bool Data::get(int id)
+{
+    S_D(Data);
+    return getData(d->dataInfo().idFieldName() + " = " + QString::number(id)) && getExtras();
+}
+
 bool Data::get(const QString &filter, bool withExtras)
 {
+    return getData(filter) && (withExtras ? getExtras() : true);
+}
+
+bool Data::getData(const QString &filter)
+{
+    S_D(Data);
+
     const QString request = selectStatement() + " WHERE " + filter + " LIMIT 1";
     bool ok;
     QSqlQuery query = exec(request, &ok);
 
     if (ok && query.next()) {
-        extractRecord(query.record());
+        d->fillWithRecord(query.record(), this);
         query.finish();
-        return (withExtras ? getExtras() : true);
-    } else
-        return false;
+    }
+
+    return ok;
 }
 
 bool Data::getExtras()
@@ -195,7 +236,7 @@ bool Data::save()
 {
     S_D(Data);
     
-    if (d->id == 0)
+    if (d->id() == 0)
         return insert();
     else
         return update();
@@ -210,7 +251,7 @@ bool Data::insert()
     QSqlQuery query = exec(request, &ok);
 
     if (ok) {
-        d->id = query.lastInsertId().toInt();
+        d->setId(query.lastInsertId().toInt());
         return true;
     } else
         return false;
@@ -220,7 +261,7 @@ bool Data::update()
 {
     S_D(Data);
 
-    const QString request = updateStatement() + " WHERE id = " + QString::number(d->id);
+    const QString request = updateStatement() + " WHERE id = " + QString::number(d->id());
     bool ok;
     exec(request, &ok);
 
@@ -231,54 +272,27 @@ bool Data::deleteData()
 {
     S_D(Data);
 
-    const QString request = deleteStatement() + " WHERE id = " + QString::number(d->id);   
+    const QString request = deleteStatement() + " WHERE id = " + QString::number(d->id());
     bool ok;
     exec(request, &ok);
 
     if (ok) {
-        d->id = 0;
+        d->setId(0);
         return true;
     } else
         return false;
 }
 
+DataInfo Data::dataInfo() const
+{
+    S_D(const Data);
+    return d->dataInfo();
+}
+
 QSqlError Data::lastError() const
 {
     S_D(const Data);
-    return d->lastError;
-}
-
-QSqlRecord Data::toSqlRecord() const
-{
-    S_D(const Data);
-
-    QSqlRecord record = dataInfo().record();
-    fillRecord(&record);
-    return record;
-}
-
-QJsonObject Data::toJsonObject() const
-{
-    S_D(const Data);
-
-    QJsonObject object;
-
-    object.insert("id", d->id);
-
-    const DataInfo info = dataInfo();
-    for (int i(0); i < info.displayCount(); ++i)
-        object.insert(info.displayFieldName(i), QJsonValue::fromVariant(property(info.displayPropertyName(i))));
-
-    std::function<JsonGenerationFunction> function = DataInfoPrivate::jsonGenerationFunctions.value(d->className);
-    if (function)
-        function(*this, &object);
-    else {
-        const QStringList properties = d->properties.keys();
-        for (const QString &property : properties)
-            object.insert(property, QJsonValue::fromVariant(d->properties.value(property)));
-    }
-
-    return object;
+    return *d->lastError();
 }
 
 const void *Data::internalData() const
@@ -343,11 +357,18 @@ bool Data::operator==(const Data &other) const
     if (this == &other || d_ptr == other.d_ptr)
         return true;
     else
-        return d_ptr->equalsTo(d_ptr);
+        return d_ptr->equals(d_ptr);
 }
 
 void Data::initData()
 {
+}
+
+bool Data::saveReadOnlyProperty(const QString &name, const QVariant &value)
+{
+    qWarning().noquote().nospace() << "Systemus::Data: " << "read only property'" << name << "' save not handled !";
+    Q_UNUSED(value);
+    return false;
 }
 
 QByteArray Data::instanceClassName() const
@@ -363,46 +384,26 @@ const QMetaObject *Data::instanceMetaObject() const
 QByteArray Data::dataClassName() const
 {
     S_D(const Data);
-    return d->className;
+    return d->dataClassName();
 }
 
 void Data::setDataClassName(const QByteArray &name)
 {
     S_D(Data);
-    d->className = name;
-}
-
-void Data::fillRecord(QSqlRecord *record) const
-{
-    S_D(const Data);
-
-    const DataInfo info = dataInfo();
-    for (int i(0); i < info.count(); ++i)
-        if (record->contains(info.fieldName(i)))
-            record->setValue(info.fieldName(i), property(info.fieldPropertyName(i)));
-}
-
-void Data::extractRecord(const QSqlRecord &record)
-{
-    S_D(Data);
-    init();
-
-    const DataInfo info = dataInfo();
-    for (int i(0); i < info.count(); ++i)
-        if (record.contains(info.fieldName(i)))
-            setProperty(info.fieldPropertyName(i), record.value(info.fieldName(i)));
+    d->setDataClassName(name);
 }
 
 QSqlQuery Data::exec(const QString &query, bool *ok) const
 {
     S_D(const Data);
-    return execQuery(query, ok, &d->lastError);
+    return execQuery(query, ok, d->lastError());
 }
 
 QString Data::selectStatement() const
 {
     S_D(const Data);
-    return selectStatement(dataInfo());
+    const DataInfo info = d->dataInfo();
+    return driver()->sqlStatement(QSqlDriver::SelectStatement, info.tableName(), info.record(), false);
 }
 
 QString Data::selectStatement(const DataInfo &info)
@@ -413,19 +414,19 @@ QString Data::selectStatement(const DataInfo &info)
 QString Data::insertStatement() const
 {
     S_D(const Data);
-    return driver()->sqlStatement(QSqlDriver::InsertStatement, dataInfo().tableName(), toSqlRecord(), false);
+    return driver()->sqlStatement(QSqlDriver::InsertStatement, d->dataInfo().tableName(), toSqlRecord(), false);
 }
 
 QString Data::updateStatement() const
 {
     S_D(const Data);
-    return driver()->sqlStatement(QSqlDriver::UpdateStatement, dataInfo().tableName(), toSqlRecord(), false);
+    return driver()->sqlStatement(QSqlDriver::UpdateStatement, d->dataInfo().tableName(), toSqlRecord(), false);
 }
 
 QString Data::deleteStatement() const
 {
     S_D(const Data);
-    return driver()->sqlStatement(QSqlDriver::DeleteStatement, dataInfo().tableName(), QSqlRecord(), false);
+    return driver()->sqlStatement(QSqlDriver::DeleteStatement, d->dataInfo().tableName(), QSqlRecord(), false);
 }
 
 DataSearch::DataSearch()  :
@@ -701,6 +702,66 @@ QStringList DataInfo::searchPropertyNames() const
     return names;
 }
 
+QStringList DataInfo::secretFieldNames() const
+{
+    S_D(const DataInfo);
+
+    QStringList names;
+    for (int index : d->secretFieldIndexes)
+        names.append(fieldName(index));
+    return names;
+}
+
+QString DataInfo::secretFieldName(int index) const
+{
+    S_D(const DataInfo);
+    return fieldName(d->secretFieldIndexes.at(index));
+}
+
+QSqlField DataInfo::secretField(int index) const
+{
+    S_D(const DataInfo);
+    return field(d->secretFieldIndexes.at(index));
+}
+
+QStringList DataInfo::secretPropertyNames() const
+{
+    S_D(const DataInfo);
+
+    QStringList names;
+    for (int index : d->secretFieldIndexes)
+        names.append(fieldPropertyName(index));
+    return names;
+}
+
+QString DataInfo::secretPropertyName(int index) const
+{
+    S_D(const DataInfo);
+    return fieldPropertyName(d->secretFieldIndexes.at(index));
+}
+
+QMetaProperty DataInfo::secretProperty(int index) const
+{
+    S_D(const DataInfo);
+    return fieldProperty(d->secretFieldIndexes.at(index));
+}
+
+int DataInfo::secretCount() const
+{
+    S_D(const DataInfo);
+    return d->secretFieldIndexes.size();
+}
+
+QSqlRecord DataInfo::secretRecord() const
+{
+    S_D(const DataInfo);
+
+    QSqlRecord record;
+    for (int index : d->secretFieldIndexes)
+        record.append(field(index));
+    return record;
+}
+
 QStringList DataInfo::fieldNames() const
 {
     QStringList names;
@@ -785,6 +846,24 @@ void DataInfo::dumpInfos()
     qInfo().noquote() << '}';
 }
 
+Data *DataInfo::newData() const
+{
+    return newData(QSqlRecord());
+}
+
+Data *DataInfo::newData(const QSqlRecord &record) const
+{
+    S_D(const DataInfo);
+    QMetaType type = QMetaType::fromName(d->metaObject->className());
+    if (type.isValid()) {
+        Data *data = static_cast<Data *>(type.create());
+        data->fill(record, true);
+        return data;
+    } else {
+        return nullptr;
+    }
+}
+
 QList<Data> DataInfo::find(const DataSearch &query, QSqlError *error) const
 {
     S_D(const DataInfo);
@@ -849,6 +928,11 @@ DataInfo DataInfo::fromTableRecord(const QString &tableName, const QSqlRecord &r
     return DataInfo(d);
 }
 
+bool DataInfo::isRegistered(const QByteArray &className)
+{
+    return DataInfoPrivate::registry.contains(className);
+}
+
 void DataInfo::registerInfo(const QByteArray &className, const DataInfo &info)
 {
     DataInfoPrivate::registry.insert(className, info);
@@ -881,44 +965,267 @@ DataRegistration::DataRegistration(const QByteArray &className) :
 
 DataRegistration &DataRegistration::init(const std::function<void ()> &function)
 {
-    function();
+    if (isValid())
+        function();
     return *this;
 }
 
 DataRegistration &DataRegistration::transfer(const std::function<DataTransferFunction> &function)
 {
-    DataInfoPrivate::transferFunctions.insert(_className, function);
+    if (isValid())
+        DataInfoPrivate::transferFunctions.insert(_className, function);
     return *this;
 }
 
 DataRegistration &DataRegistration::jsonGenerator(const std::function<JsonGenerationFunction> &function)
 {
-    DataInfoPrivate::jsonGenerationFunctions.insert(_className, function);
+    if (isValid())
+        DataInfoPrivate::jsonGenerationFunctions.insert(_className, function);
     return *this;
 }
 
-DataPrivate::DataPrivate() :
-    id(0),
-    initialized(false),
-    className(Data::staticMetaObject.className())
+DataPrivate::~DataPrivate()
 {
 }
 
-QVariant DataPrivate::property(const QString &name) const
+void DataPrivate::init()
 {
-    return properties.value(name);
 }
 
-void DataPrivate::setProperty(const QString &name, const QVariant &value)
+bool DataPrivate::hasProperty(const QString &name, const Data *data) const
 {
-    properties.insert(name, value);
+    if (hasDataProperty(name))
+        return true;
+
+    int index = data->instanceMetaObject()->indexOfProperty(name.toStdString().c_str());
+    if (index >= 0)
+        return true;
+
+    return false;
 }
 
-bool DataPrivate::equalsTo(const DataPrivate *other) const
+QVariant DataPrivate::property(const QString &name, const Data *data) const
 {
-    return id == other->id
-        && properties == other->properties
-        && className == other->className;
+    if (hasDataProperty(name))
+        return dataProperty(name);
+    else if (data) {
+        const QMetaObject *object = data->instanceMetaObject();
+        int index = object->indexOfProperty(name.toStdString().c_str());
+        if (index >= 0)
+            return object->property(index).readOnGadget(data);
+    }
+
+    return QVariant();
+}
+
+bool DataPrivate::setProperty(const QString &name, const QVariant &value, Data *data)
+{
+    if (hasDataProperty(name)) {
+        setDataProperty(name, value);
+        return true;
+    } else if (data) {
+        const QMetaObject *object = data->instanceMetaObject();
+        int index = object->indexOfProperty(name.toStdString().c_str());
+        if (index >= 0) {
+            const QMetaProperty property = object->property(index);
+            if (property.isWritable())
+                return object->property(index).writeOnGadget(data, value);
+            else
+                return data->saveReadOnlyProperty(name, value);
+        }
+    }
+
+    return false;
+}
+
+void DataPrivate::fillRecord(QSqlRecord *record, const Data *data) const
+{
+    const DataInfo info = dataInfo();
+    for (int i(0); i < info.count(); ++i) {
+        const QString field = info.fieldName(i);
+        if (record->contains(field))
+            record->setValue(field, property(info.fieldPropertyName(i), data));
+    }
+}
+
+void DataPrivate::fillWithRecord(const QSqlRecord &record, Data *data)
+{
+    const DataInfo info = dataInfo();
+    for (int i(0); i < info.count(); ++i) {
+        const QString field = info.fieldName(i);
+        if (record.contains(field))
+            setProperty(info.fieldPropertyName(i), record.value(field), data);
+    }
+}
+
+void DataPrivate::fillJsonObject(QJsonObject *object, const Data *data) const
+{
+    const DataInfo info = dataInfo();
+    for (int i(0); i < info.count(); ++i)
+        object->insert(info.fieldName(i), QJsonValue::fromVariant(property(info.fieldPropertyName(i), data)));
+}
+
+DataInfo DataPrivate::dataInfo() const
+{
+    return DataInfoPrivate::registry.value(dataClassName());
+}
+
+DefaultDataPrivate::~DefaultDataPrivate()
+{
+}
+
+void DefaultDataPrivate::init()
+{
+    const DataInfo info = dataInfo();
+    const QStringList properties = dataInfo().secretPropertyNames();
+    for (const QString &property : properties)
+        _properties.insert(property, QVariant());
+}
+
+int DefaultDataPrivate::id() const
+{
+    return _id;
+}
+
+void DefaultDataPrivate::setId(int id)
+{
+    _id = id;
+}
+
+bool DefaultDataPrivate::isValid() const
+{
+    return _id > 0;
+}
+
+bool DefaultDataPrivate::isEmpty() const
+{
+    return _id == 0 && _properties.isEmpty();
+}
+
+bool DefaultDataPrivate::equals(const DataPrivate *o) const
+{
+    auto *other = static_cast<const DefaultDataPrivate *>(o);
+    return _id == other->_id && _properties == other->_properties && _className == other->_className;
+}
+
+void DefaultDataPrivate::clear()
+{
+    _id = 0;
+    _properties.clear();
+}
+
+QByteArray DefaultDataPrivate::dataClassName() const
+{
+    return _className;
+}
+
+void DefaultDataPrivate::setDataClassName(const QByteArray &className)
+{
+    _className = className;
+}
+
+QSqlError *DefaultDataPrivate::lastError() const
+{
+    return &_lastError;
+}
+
+bool DefaultDataPrivate::hasDataProperty(const QString &name) const
+{
+    return _properties.contains(name);
+}
+
+QVariant DefaultDataPrivate::dataProperty(const QString &name) const
+{
+    return _properties.value(name);
+}
+
+bool DefaultDataPrivate::setDataProperty(const QString &name, const QVariant &value)
+{
+    _properties.insert(name, value);
+    return true;
+}
+
+AdapterDataPrivate::AdapterDataPrivate(Data *data) :
+    _data(data)
+{
+}
+
+AdapterDataPrivate::AdapterDataPrivate(const AdapterDataPrivate &other)
+{
+    QMetaType metaType = QMetaType::fromName(other.dataClassName());
+    _data = static_cast<Data *>(metaType.create(other._data));
+}
+
+AdapterDataPrivate::~AdapterDataPrivate()
+{
+    if (_data)
+        delete _data;
+}
+
+void AdapterDataPrivate::init()
+{
+    _data->init();
+}
+
+int AdapterDataPrivate::id() const
+{
+    return _data->id();
+}
+
+void AdapterDataPrivate::setId(int id)
+{
+    _data->setId(id);
+}
+
+bool AdapterDataPrivate::isValid() const
+{
+    return _data->isValid();
+}
+
+bool AdapterDataPrivate::isEmpty() const
+{
+    return _data->isEmpty();
+}
+
+bool AdapterDataPrivate::equals(const DataPrivate *other) const
+{
+    return _data->d_ptr->equals(other);
+}
+
+void AdapterDataPrivate::clear()
+{
+    _data->clear();
+}
+
+QByteArray AdapterDataPrivate::dataClassName() const
+{
+    return _data->dataClassName();
+}
+
+void AdapterDataPrivate::setDataClassName(const QByteArray &className)
+{
+    _data->setDataClassName(className);
+}
+
+QSqlError *AdapterDataPrivate::lastError() const
+{
+    return _data->d_ptr->lastError();
+}
+
+bool AdapterDataPrivate::hasDataProperty(const QString &name) const
+{
+    return _data->hasProperty(name);
+}
+
+QVariant AdapterDataPrivate::dataProperty(const QString &name) const
+{
+    return _data->property(name);
+}
+
+bool AdapterDataPrivate::setDataProperty(const QString &name, const QVariant &value)
+{
+    _data->setProperty(name, value);
+    return true;
 }
 
 DataInfoPrivate::DataInfoPrivate()
@@ -946,6 +1253,7 @@ void DataInfoPrivate::update(const QMetaObject *object)
     idFieldIndex = 0;
     userFieldIndex = 1;
     searchFieldIndexes.clear();
+    secretFieldIndexes.clear();
 
     tableName.clear();
     tableRecord.clear();
@@ -992,8 +1300,11 @@ void DataInfoPrivate::update(const QMetaObject *object)
     int extraFieldsIndex = object->indexOfClassInfo("fields");
     if (extraFieldsIndex >= 0) {
         const QList<QSqlField> fields = fieldsFromString(QString(object->classInfo(extraFieldsIndex).value()), tableName, object->className());
-        for (const QSqlField &field : fields)
+        for (const QSqlField &field : fields) {
+            int index = tableRecord.count();
             tableRecord.append(field);
+            secretFieldIndexes.append(index);
+        }
     }
 }
 
@@ -1002,6 +1313,7 @@ bool DataInfoPrivate::equals(const DataInfoPrivate &other) const
     return idFieldIndex == other.idFieldIndex
         && userFieldIndex == other.userFieldIndex
         && searchFieldIndexes == other.searchFieldIndexes
+        && secretFieldIndexes == other.secretFieldIndexes
         && tableName == other.tableName
         && tableRecord == other.tableRecord
         && metaObject == other.metaObject;
@@ -1099,4 +1411,10 @@ QHash<QByteArray, std::function<FindDataFunction>> DataInfoPrivate::findFunction
 QHash<QByteArray, std::function<JsonGenerationFunction>> DataInfoPrivate::jsonGenerationFunctions;
 QHash<QByteArray, std::function<DataTransferFunction>> DataInfoPrivate::transferFunctions;
 
+}
+
+template<>
+Systemus::DataPrivate *QSharedDataPointer<Systemus::DataPrivate>::clone()
+{
+    return d->clone();
 }

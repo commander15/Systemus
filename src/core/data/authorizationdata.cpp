@@ -18,8 +18,8 @@ AuthorizationData::AuthorizationData(const AuthorizationData &other) :
 {
 }
 
-AuthorizationData::AuthorizationData(const AuthorizationData &other, bool transferProperties) :
-    Data(other, transferProperties)
+AuthorizationData::AuthorizationData(const AuthorizationData &other, bool adapt) :
+    Data(other, adapt)
 {
 }
 
@@ -69,7 +69,7 @@ QTime AuthorizationData::creationTime() const
     return d->creationTime;
 }
 
-void AuthorizationData::setProperty(const QString &name, const QVariant &value)
+bool AuthorizationData::saveReadOnlyProperty(const QString &name, const QVariant &value)
 {
     S_D(AuthorizationData);
 
@@ -78,7 +78,9 @@ void AuthorizationData::setProperty(const QString &name, const QVariant &value)
     else if (name == "creationTime")
         d->creationTime = value.toTime();
     else
-        Data::setProperty(name, value);
+        return Data::saveReadOnlyProperty(name, value);
+
+    return true;
 }
 
 bool AuthorizationData::isValid() const
@@ -94,5 +96,7 @@ bool AuthorizationData::insert()
     d->creationTime = QTime::currentTime();
     return Data::insert();
 }
+
+
 
 }

@@ -13,6 +13,7 @@ class UserInterfacePrivate;
 class SYSTEMUS_WIDGETS_EXPORT UserInterface : public QWidget
 {
     Q_OBJECT
+    Q_PROPERTY(QByteArray interfaceId READ interfaceId CONSTANT)
 
 public:
     enum InterfaceAction {

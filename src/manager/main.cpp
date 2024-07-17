@@ -8,6 +8,7 @@
 
 int main(int argc, char *argv[])
 {
+    Systemus::init(argc, argv);
     SYSTEMUS_INIT()
 
     QApplication app(argc, argv);
@@ -19,9 +20,13 @@ int main(int argc, char *argv[])
     db.setUserName("root");
     db.open();
 
-    Systemus::System::instance();
+    Systemus::System *system = Systemus::System::instance();
+    system->sync();
+
+    qDebug() << system->setting("screenCount");
 
     MainWindow w;
+    w.setWindowTitle(system->setting("app").toString() + " on screen " + system->setting("screenCount").toString());
     w.show();
 
     return app.exec();

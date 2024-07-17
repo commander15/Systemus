@@ -40,6 +40,8 @@ public:
 
     bool getExtras() override;
 
+    bool saveReadOnlyProperty(const QString &name, const QVariant &value) override;
+
 private:
     S_DATA(User)
 };
