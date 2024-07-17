@@ -105,6 +105,7 @@ QScopedPointer<System> System::_instance;
 
 SystemPrivate::SystemPrivate(System *q) :
     q(q),
+    now(QDateTime::currentDateTime()),
 #ifdef QT_DEBUG
     settings("systemus.ini", QSettings::IniFormat),
 #endif
@@ -152,11 +153,12 @@ void SystemPrivate::update()
 bool SystemPrivate::getData()
 {
     bool ok;
-    QSqlQuery query = Data::execQuery("SELECT id, name, version FROM Systems ORDER BY id DESC LIMIT 1", &ok);
+    QSqlQuery query = Data::execQuery("SELECT name, version, CURRENT_TIMESTAMP FROM Systems ORDER BY id DESC LIMIT 1", &ok);
 
     if (ok && query.next()) {
-        name = query.value("name").toString();
-        version = QVersionNumber::fromString(query.value("version").toString());
+        name = query.value(0).toString();
+        version = QVersionNumber::fromString(query.value(1).toString());
+        now = query.value(2).toDateTime();
 
         settings.beginGroup("System");
         settings.setValue("name", name);

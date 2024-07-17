@@ -31,6 +31,7 @@ public:
 
     QString name;
     QVersionNumber version;
+    QDateTime now;
 
     QSettings settings;
     QHash<QString, int> settingKeyIds;
@@ -42,14 +43,14 @@ public:
 private:
     enum SettingType {
         Unknown = -1,
-        Int = 0,
-        Double = 10,
-        Bool = 20,
-        String = 30,
-        Date = 40,
-        Time = 50,
-        DateTime = 60,
-        ByteArray = 70
+        Int = 10,
+        Double = 20,
+        Bool = 30,
+        String = 40,
+        Date = 50,
+        Time = 60,
+        DateTime = 70,
+        ByteArray = 80
     };
 
     static int settingTypeFromMetatype(const QMetaType &type);

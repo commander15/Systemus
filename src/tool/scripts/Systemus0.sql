@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS SystemSettings (
     id    INTEGER      PRIMARY KEY AUTO_INCREMENT,
     name  VARCHAR(32)  NOT NULL,
     value VARCHAR(128),
-    type  VARCHAR(16)  NOT NULL
+    type  INTEGER      NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS SystemNotifications (
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS SystemNotifications (
 );
 
 CREATE TABLE IF NOT EXISTS SystemInstallations (
-    id      INTEGER     PRIMARY KEY AUTO_INCREMENT,
+    id      INTEGER     NOT NULL CHECK(id >= 0),
     version VARCHAR(10) NOT NULL,
     date    DATE        NOT NULL,
     time    TIME        NOT NULL
