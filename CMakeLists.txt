@@ -18,6 +18,8 @@ include(cmake/Utils.cmake)
 
 find_package(Qt REQUIRED)
 
+add_subdirectory(3rdparty)
+
 add_subdirectory(src)
 
 if (Systemus_BUILD_TEST)

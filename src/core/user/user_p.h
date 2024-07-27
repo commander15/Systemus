@@ -19,6 +19,8 @@ public:
 
     void clear() override;
 
+    UserProfilePrivate *clone() const override;
+
     QString name;
     QString firstName;
 };
@@ -29,6 +31,7 @@ public:
     UserPrivate();
     UserPrivate(const UserPrivate &other) = default;
 
+    static bool checkPassword(const QString &input, const QString &password);
     static QString encryptPassword(const QString &password);
 
     bool hasPrivilege(const QString &name) const override;
@@ -38,6 +41,8 @@ public:
     bool equals(const DataPrivate *o) const override;
 
     void clear() override;
+
+    UserPrivate *clone() const override;
 
     int dataType() const override
     { return UserDataType; }

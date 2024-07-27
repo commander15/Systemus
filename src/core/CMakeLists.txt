@@ -13,7 +13,7 @@ target_include_directories(core
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
 )
 
-target_link_libraries(core PUBLIC Qt::Core Qt::Sql)
+target_link_libraries(core PUBLIC Qt::Core Qt::Sql PRIVATE bcrypt)
 
 install(TARGETS core
     EXPORT SystemusCoreTargets

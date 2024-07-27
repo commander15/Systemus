@@ -70,31 +70,36 @@ bool Authenticator::logIn(const QString &name, const QString &password)
 
     S_D(Authenticator);
 
-    User user;
+    bool ok;
+    QSqlQuery query = Data::execQuery("SELECT id, active, password FROM Users WHERE name = '" + name + "'", &ok);
 
-    if (user.get("name = '" + name + '\'', false) && user.password() == UserPrivate::encryptPassword(password)) {
-        user.getExtras();
-        d->user = user;
-        emit loggedIn(user);
-
-        d->error = AuthenticationError::NoError;
-        return true;
-    } else {
-        AuthenticationError::ErrorType error = AuthenticationError::UnknownError;
-
-        if (!user.isValid())
-            error = AuthenticationError::UserNotFound;
-        else if (user.password() != UserPrivate::encryptPassword(password))
-            error = AuthenticationError::BadCredentials;
-        else if (!user.isActive())
-            error = AuthenticationError::DisabledAccount;
-        else
-            error = AuthenticationError::UnknownError;
-
-        d->error = error;
-        emit logInError(error);
+    if (!ok) {
+        d->error = AuthenticationError::UnknownError;
+        emit logInError(d->error);
         return false;
     }
+
+    if (!query.next()) {
+        d->error = AuthenticationError::UserNotFound;
+        emit logInError(d->error);
+        return false;
+    }
+
+    if (!query.value(1).toBool()) {
+        d->error = AuthenticationError::DisabledAccount;
+        emit logInError(d->error);
+        return false;
+    }
+
+    if (!UserPrivate::checkPassword(password, query.value(2).toString())) {
+        d->error = AuthenticationError::BadCredentials;
+        emit logInError(d->error);
+        return false;
+    }
+
+    d->user.get(query.value(0).toInt());
+    emit loggedIn(d->user);
+    return true;
 }
 
 void Authenticator::logOut()
