@@ -31,7 +31,7 @@ public:
 class PrivilegedDataPrivate : public AuthorizationDataPrivate
 {
 public:
-    PrivilegedDataPrivate(const QString &context, bool withJunctionData = true);
+    PrivilegedDataPrivate(const QString &context);
     PrivilegedDataPrivate(const PrivilegedDataPrivate &other) = default;
 
     virtual bool hasPrivilege(const QString &name) const;

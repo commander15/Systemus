@@ -17,11 +17,8 @@ int main(int argc, char *argv[])
 
     QLoggingCategory::setFilterRules("systemus.*.debug = true");
 
-    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
-    db.setDatabaseName("Systemus");
-    db.setHostName("127.0.0.1");
-    db.setPort(3306);
-    db.open("root", QString());
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    db.setDatabaseName(QStringLiteral(TESTDATA_DIR) + "/sample_db.sqlite3");
 
     return RUN_ALL_TESTS();
 }

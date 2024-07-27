@@ -7,6 +7,7 @@
 
 #include <SystemusCore/datamodel.h>
 
+#include <QtWidgets/qcompleter.h>
 #include <QtWidgets/qmenu.h>
 
 #include <QtCore/qcoreapplication.h>
@@ -23,9 +24,13 @@ public:
     void refreshUi();
     void translateUi();
 
-    void init() override;
+    void initContextMenu();
 
-    QList<UserInterface::InterfaceAction> supportedActions;
+    QCompleter searchCompleter;
+
+    QList<StandardUserInterface::InterfaceAction> supportedActions;
+
+    DataEditDialog *editDialog;
 
     QMenu *menu;
     QAction *showAction;
@@ -33,7 +38,7 @@ public:
     QAction *deleteAction;
     QAction *printAction;
 
-    DataModel model;
+    DataTableModel model;
 };
 
 }

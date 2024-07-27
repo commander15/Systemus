@@ -38,7 +38,7 @@ public:
 
     bool isValid() const override;
 
-    bool insert() override;
+    bool insertExtras(ExtraType type) override;
 
 protected:
     AuthorizationData(AuthorizationDataPrivate *data);

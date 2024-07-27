@@ -1,6 +1,8 @@
 #include "userinterface.h"
 #include "userinterface_p.h"
 
+#include <SystemusWidgets/interfaceserver.h>
+
 #include <QtGui/qevent.h>
 
 namespace Systemus {
@@ -20,9 +22,10 @@ UserInterface::UserInterface(UserInterfacePrivate *dd, QWidget *parent) :
     d_ptr(dd)
 {
     S_D(UserInterface);
-    dd->init();
 
-    setInterfaceIcon(QIcon(":/systemus/icons/login_icon.png"));
+    setInterfaceIcon(QIcon(":/systemus/icons/systemus_mini.png"));
+
+    dd->init();
 }
 
 UserInterface::~UserInterface()
@@ -55,13 +58,18 @@ void UserInterface::setInterfaceTitle(const QString &title)
     setWindowTitle(title);
 }
 
+bool UserInterface::canHandleAction(int action) const
+{
+    return action != 0;
+}
+
 bool UserInterface::supportAction(int action) const
 {
     Q_UNUSED(action);
     return false;
 }
 
-QVariant UserInterface::trigger(int action, const QVariant &data)
+QVariant UserInterface::trigger(int action, const QVariantList &data)
 {
     if (supportAction(action))
         return processAction(action, data);
@@ -109,11 +117,31 @@ void UserInterface::translateUi()
 {
 }
 
-QVariant UserInterface::processAction(int action, const QVariant &data)
+QVariant UserInterface::processAction(int action, const QVariantList &data)
 {
     Q_UNUSED(action);
     Q_UNUSED(data);
     return QVariant();
+}
+
+void UserInterface::switchToInterface(const QByteArray &id)
+{
+    emit externalActionRequested(QByteArrayLiteral(SYSTEMUS_INTERFACE_SERVER_ID), InterfaceServer::ShowInterfaceAction, { id });
+}
+
+void UserInterface::requestServerAction(int action, const QVariantList &data)
+{
+    emit externalActionRequested(QByteArrayLiteral(SYSTEMUS_INTERFACE_SERVER_ID), action, data);
+}
+
+void UserInterface::requestExternalAction(int action, const QVariantList &data)
+{
+    emit externalActionRequested(QByteArray(), action, data);
+}
+
+void UserInterface::requestExternalAction(const QByteArray &targetId, int action, const QVariantList &data)
+{
+    emit externalActionRequested(targetId, action, data);
 }
 
 UserInterfacePrivate::UserInterfacePrivate(const QByteArray &id, UserInterface *q) :

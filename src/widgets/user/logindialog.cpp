@@ -2,15 +2,20 @@
 #include "ui_logindialog.h"
 
 #include <SystemusCore/authenticator.h>
+#include <SystemusCore/system.h>
 
 #include <QtSql/qsqldatabase.h>
+
+#include <QtCore/qversionnumber.h>
+#include <QtCore/qtimer.h>
 
 namespace Systemus {
 
 LoginDialog::LoginDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::LoginDialog),
-    _showOnLogOut(false)
+    _showOnLogOut(false),
+    _cleanTimer(new QTimer(this))
 {
     ui->setupUi(this);
 
@@ -33,9 +38,16 @@ LoginDialog::LoginDialog(QWidget *parent) :
 
     ui->messageTextOutput->clear();
 
+    _cleanTimer->setInterval(3000);
+    _cleanTimer->setSingleShot(true);
+    connect(_cleanTimer, &QTimer::timeout, this, &LoginDialog::clearError);
+
     Authenticator *auth = Authenticator::instance();
     connect(auth, &Authenticator::loggedIn, this, [this](const User &) { accept(); });
     connect(auth, &Authenticator::logInError, this, &LoginDialog::processError);
+
+    connect(System::instance(), &System::online, this, &LoginDialog::updateSystemData);
+    connect(System::instance(), &System::online, this, &QWidget::show);
 
     connect(this, &QDialog::rejected, qApp, &QCoreApplication::quit);
 }
@@ -43,6 +55,19 @@ LoginDialog::LoginDialog(QWidget *parent) :
 LoginDialog::~LoginDialog()
 {
     delete ui;
+}
+
+QPixmap LoginDialog::logo() const
+{
+    return ui->systemLogoOutput->pixmap();
+}
+
+void LoginDialog::setLogo(const QPixmap &logo, Qt::Orientation orientation)
+{
+    if (orientation == Qt::Horizontal)
+        ui->systemLogoOutput->setPixmap(logo.scaled(QSize(256, 80), Qt::KeepAspectRatio));
+    else
+        ui->systemLogoOutput->setPixmap(logo.scaled(QSize(80, 80), Qt::KeepAspectRatio));
 }
 
 void LoginDialog::setShowOnLogOut(bool show)
@@ -74,6 +99,12 @@ void LoginDialog::logIn()
 void LoginDialog::processError(const AuthenticationError &error)
 {
     ui->messageTextOutput->setText(error.errorString());
+    _cleanTimer->start();
+}
+
+void LoginDialog::clearError()
+{
+    ui->messageTextOutput->clear();
 }
 
 void LoginDialog::toggleView(bool settings)
@@ -111,6 +142,13 @@ void LoginDialog::testDatabaseConnection()
     }
 
     QSqlDatabase::removeDatabase(connection);
+}
+
+void LoginDialog::updateSystemData()
+{
+    System *system = System::instance();
+    ui->systemNameOutput2->setText(system->name());
+    ui->systemVersionOutput->setText(system->version().toString());
 }
 
 }

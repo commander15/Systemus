@@ -3,6 +3,7 @@
 TEST(UserTest, userGathering)
 {
     Systemus::User user = Systemus::User::fromId(1);
+    user.dumpInfos();
     ASSERT_TRUE(user.isValid());
 
     ASSERT_EQ(user.name().toStdString(), "admin");

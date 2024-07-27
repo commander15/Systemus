@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
-        <file>scripts/Systemus0.sql</file>
         <file>configs/system.json</file>
+        <file>scripts/MYSQL/Systemus0.sql</file>
+        <file>scripts/SQLITE/Systemus0.sql</file>
     </qresource>
 </RCC>

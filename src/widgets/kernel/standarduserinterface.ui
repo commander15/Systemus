@@ -124,5 +124,22 @@
  <resources>
   <include location="../resources/systemus_widgets_res.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>searchInput</sender>
+   <signal>returnPressed()</signal>
+   <receiver>actionSearch</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>99</x>
+     <y>22</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

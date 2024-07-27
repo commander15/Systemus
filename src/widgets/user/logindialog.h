@@ -5,6 +5,8 @@
 
 #include <QtWidgets/qdialog.h>
 
+class QTimer;
+
 namespace Systemus {
 
 namespace Ui {
@@ -21,6 +23,9 @@ public:
     LoginDialog(QWidget *parent = nullptr);
     ~LoginDialog();
 
+    QPixmap logo() const;
+    void setLogo(const QPixmap &logo, Qt::Orientation orientation);
+
     void setShowOnLogOut(bool show = true);
 
     Q_SLOT void done(int r) override;
@@ -28,14 +33,18 @@ public:
 private:
     Q_SLOT void logIn();
     Q_SLOT void processError(const AuthenticationError &error);
+    Q_SLOT void clearError();
 
     Q_SLOT void toggleView(bool settings);
     Q_SLOT void saveDatabaseSettings();
     Q_SLOT void testDatabaseConnection();
 
-    bool _showOnLogOut;
+    Q_SLOT void updateSystemData();
 
     Ui::LoginDialog *ui;
+
+    bool _showOnLogOut;
+    QTimer *_cleanTimer;
 };
 
 }

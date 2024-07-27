@@ -10,8 +10,27 @@
     <height>317</height>
    </rect>
   </property>
+  <property name="windowTitle">
+   <string notr="true">Systemus Manager</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../widgets/resources/systemus_widgets_res.qrc">
+    <normaloff>:/systemus/icons/systemus_full.png</normaloff>:/systemus/icons/systemus_full.png</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
      <widget class="Systemus::InterfaceStack" name="stackedWidget"/>
     </item>
@@ -20,6 +39,24 @@
   <widget class="Systemus::ToolBar" name="toolBar">
    <property name="windowTitle">
     <string>toolBar</string>
+   </property>
+   <property name="movable">
+    <bool>false</bool>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::NoToolBarArea</set>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>32</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextBesideIcon</enum>
+   </property>
+   <property name="floatable">
+    <bool>false</bool>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
@@ -42,6 +79,8 @@
    <header location="global">SystemusWidgets/toolbar.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../widgets/resources/systemus_widgets_res.qrc"/>
+ </resources>
  <connections/>
 </ui>

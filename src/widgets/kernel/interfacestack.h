@@ -43,6 +43,8 @@ private:
 
     Q_SLOT void processWidgetChange(int index);
 
+    void translateUi();
+
     Ui::InterfaceStack *ui;
 };
 

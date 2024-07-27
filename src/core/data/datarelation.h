@@ -4,6 +4,7 @@
 #include <SystemusCore/global.h>
 #include <SystemusCore/data.h>
 
+#include <QtSql/qsqlquery.h>
 #include <QtSql/qsqlrecord.h>
 #include <QtSql/qsqlfield.h>
 
@@ -33,17 +34,55 @@ public:
     virtual QJsonValue toJson() const = 0;
 
     bool get(const Data *primary);
+    bool get(const Data *primary, const QString &foreignProperty);
+    bool get(const Data *primary, const QString &foreignProperty, const QString &indexProperty);
     bool get(const Data &primary);
+    bool get(const Data &primary, const QString &foreignProperty);
+    bool get(const Data &primary, const QString &foreignProperty, const QString &indexProperty);
+
+    bool insert(Data *primary);
+    bool insert(Data *primary, const QString &foreignProperty);
+    bool insert(Data *primary, const QString &foreignProperty, const QString &indexProperty);
+    bool insert(Data &primary);
+    bool insert(Data &primary, const QString &foreignProperty);
+    bool insert(Data &primary, const QString &foreignProperty, const QString &indexProperty);
+
+    bool update(Data *primary);
+    bool update(Data *primary, const QString &foreignProperty);
+    bool update(Data *primary, const QString &foreignProperty, const QString &indexProperty);
+    bool update(Data &primary);
+    bool update(Data &primary, const QString &foreignProperty);
+    bool update(Data &primary, const QString &foreignProperty, const QString &indexProperty);
+
+    bool deleteData(Data *primary);
+    bool deleteData(Data *primary, const QString &foreignProperty);
+    bool deleteData(Data *primary, const QString &foreignProperty, const QString &indexProperty);
+    bool deleteData(Data &primary);
+    bool deleteData(Data &primary, const QString &foreignProperty);
+    bool deleteData(Data &primary, const QString &foreignProperty, const QString &indexProperty);
+
+    virtual DataInfo foreignInfo() const = 0;
 
     virtual int relationshipType() const = 0;
 
 protected:
-    virtual void processRecord(const QSqlRecord &record) = 0;
+    virtual bool getAllData(const Data &primary, const QString &foreignProperty, const QString &indexProperty) = 0;
+    virtual bool insertAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) = 0;
+    virtual bool updateAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) = 0;
+    virtual bool deleteAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) = 0;
 
-    virtual QString selectStatement(const Data &primary) const = 0;
-
-    QString generateSelectStatement(const QString &table, const QSqlRecord &record) const;
     QString generateSelectStatement(const QString &table, const QSqlRecord &record, const QString &filter) const;
+    QString generateInsertStatement(const QString &table, const QSqlRecord &record) const;
+    QString generateUpdateStatement(const QString &table, const QSqlRecord &record, const QString &filter) const;
+    QString generateDeleteStatement(const QString &table, const QString &filter) const;
+
+    static QString formatedPropertyValue(const QString &property, const Data &data);
+    static QString formatValue(const QVariant &value);
+
+    QSqlQuery exec(const QString &query, bool *ok, const Data &primary) const;
+    QSqlQuery exec(const QString &query, bool *ok) const;
+
+    virtual void processReceivedRecord(const QSqlRecord &record) = 0;
 
     QString _name;
 };
@@ -52,6 +91,9 @@ template<typename ForeignData>
 class SYSTEMUS_CORE_EXPORT DataRelation : public AbstractDataRelation
 {
 public:
+    DataInfo foreignInfo() const override
+    { return DataInfo::fromType<ForeignData>(); }
+
     bool operator==(const DataRelation<ForeignData> &other) const
     { return _name == other._name; }
     inline bool operator!=(const DataRelation<ForeignData> &other) const
@@ -60,15 +102,33 @@ public:
 protected:
     virtual ForeignData dataFromRecord(const QSqlRecord &record)
     { return Data::fromSqlRecord<ForeignData>(record); }
-
     virtual void saveData(const ForeignData &data) = 0;
 
-    void processRecord(const QSqlRecord &record) override
+    virtual QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const
+    { return QString(); }
+
+    bool getAllData(const Data &primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        const QString statement = selectStatement(primary, indexProperty, foreignProperty);
+
+        bool ok;
+        QSqlQuery query = exec(statement, &ok, primary);
+
+        if (ok) {
+            clear();
+            while (query.next())
+                processReceivedRecord(query.record());
+            return true;
+        } else
+            return false;
+    }
+
+    void processReceivedRecord(const QSqlRecord &record) override
     { saveData(dataFromRecord(record)); }
 };
 
 template<typename ForeignData>
-class SingleRelation : public DataRelation<ForeignData>
+class SYSTEMUS_CORE_EXPORT SingleRelation : public DataRelation<ForeignData>
 {
 public:
     operator const ForeignData &() const
@@ -95,11 +155,11 @@ public:
     void setData(const ForeignData &data)
     { _data = data; }
 
+    ForeignData &operator=(const ForeignData &other)
+    { return _data = other; }
+
     SingleRelation<ForeignData> &operator=(const SingleRelation<ForeignData> &other)
     { _data = other._data; DataRelation<ForeignData>::operator=(other); return *this; }
-
-    SingleRelation<ForeignData> &operator=(const ForeignData &other)
-    { _data = other._data; return *this; }
 
     bool isEmpty() const override
     { return _data.isEmpty(); }
@@ -112,19 +172,89 @@ public:
 
 protected:
     void saveData(const ForeignData &data) override
-    { _data = data;
+    { _data = data; }
+
+    bool insertAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        if (!_data.save())
+            return false;
+
+        const DataInfo foreignInfo = this->foreignInfo();
+
+        QString foreignPropertyName;
+        if (!foreignProperty.isEmpty())
+            foreignPropertyName = foreignProperty;
+        else
+            foreignPropertyName = foreignInfo.foreignPropertyName();
+
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = foreignInfo.idPropertyName();
+
+        primary->setProperty(foreignPropertyName, _data.property(indexPropertyName));
+        return true;
     }
 
-    QString selectStatement(const Data &primary) const override
+    bool updateAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
     {
-        const DataInfo foreignInfo = DataInfo::fromType<ForeignData>();
+        if (!_data.save())
+            return false;
 
-        QSqlRecord record = foreignInfo.record();
+        QString foreignPropertyName;
+        if (!foreignProperty.isEmpty())
+            foreignPropertyName = foreignProperty;
+        else
+            foreignPropertyName = this->foreignInfo().foreignPropertyName();
 
-        const QString property = foreignInfo.foreignPropertyName();
-        const QString filter = QStringLiteral("id = %1").arg(primary.property(property).toInt());
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = this->foreignInfo().idPropertyName();
 
-        return this->generateSelectStatement(foreignInfo.tableName(), record, filter);
+        primary->setProperty(foreignPropertyName, _data.property(indexPropertyName));
+        return true;
+    }
+
+    bool deleteAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        Q_UNUSED(indexProperty);
+
+        if (!_data.deleteData())
+            return false;
+
+        const DataInfo foreignInfo = this->foreignInfo();
+
+        QString foreignPropertyName;
+        if (!foreignProperty.isEmpty())
+            foreignPropertyName = foreignProperty;
+        else
+            foreignPropertyName = foreignInfo.foreignPropertyName();
+
+        primary->setProperty(foreignPropertyName, QVariant(foreignInfo.foreignField().metaType()));
+        return true;
+    }
+
+    QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const override
+    {
+        const DataInfo foreignInfo = this->foreignInfo();
+
+        QString foreignPropertyName;
+        if (!foreignProperty.isEmpty())
+            foreignPropertyName = foreignProperty;
+        else
+            foreignPropertyName = foreignInfo.foreignPropertyName();
+
+        QString indexFieldName;
+        if (!indexProperty.isEmpty())
+            indexFieldName = DataInfo::fieldNameFromPropertyName(indexProperty);
+        else
+            indexFieldName = foreignInfo.idPropertyName();
+
+        const QString filter = QStringLiteral("%1 = %2").arg(indexFieldName).arg(this->formatedPropertyValue(foreignPropertyName, primary));
+        return this->generateSelectStatement(foreignInfo.tableName(), foreignInfo.record(), filter);
     }
 
 private:
@@ -132,7 +262,7 @@ private:
 };
 
 template<typename ForeignData>
-class MultiRelation : public DataRelation<ForeignData>, public QList<ForeignData>
+class SYSTEMUS_CORE_EXPORT MultiRelation : public DataRelation<ForeignData>, public QList<ForeignData>
 {
 public:
     bool operator==(const MultiRelation<ForeignData> &other) const
@@ -142,6 +272,8 @@ public:
 
     bool isEmpty() const override
     { return QList<ForeignData>::isEmpty(); }
+
+    using AbstractDataRelation::insert;
 
     void clear() override
     { QList<ForeignData>::clear(); }
@@ -162,9 +294,15 @@ protected:
 // One To One Relationship
 
 template<typename ForeignData>
-class OneToOneRelation : public SingleRelation<ForeignData>
+class SYSTEMUS_CORE_EXPORT OneToOneRelation : public SingleRelation<ForeignData>
 {
 public:
+    ForeignData &operator=(const ForeignData &other)
+    { return SingleRelation<ForeignData>::operator=(other); }
+
+    OneToOneRelation<ForeignData> &operator=(const OneToOneRelation<ForeignData> &other)
+    { SingleRelation<ForeignData>::operator=(other); return *this; }
+
     int relationshipType() const override
     { return DataRelation<ForeignData>::OneToManyRelationship; }
 };
@@ -179,20 +317,90 @@ public:
     { return DataRelation<ForeignData>::OneToManyRelationship; }
 
 protected:
-    QString selectStatement(const Data &primary) const override
+    bool insertAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    { return updateAllData(primary, foreignProperty, indexProperty); }
+
+    bool updateAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        const DataInfo info = primary->dataInfo();
+
+        QString idPropertyName;
+        if (!foreignProperty.isEmpty())
+            idPropertyName = foreignProperty;
+        else
+            idPropertyName = info.idPropertyName();
+
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = info.foreignPropertyName();
+
+        for (ForeignData &data : *this) {
+            data.setProperty(indexPropertyName, primary->property(idPropertyName));
+            if (!data.save())
+                return false;
+        }
+        return true;
+    }
+
+    bool deleteAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        const DataInfo info = primary->dataInfo();
+
+        QString idPropertyName;
+        if (!foreignProperty.isEmpty())
+            idPropertyName = foreignProperty;
+        else
+            idPropertyName = info.idPropertyName();
+
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = info.foreignPropertyName();
+
+        QString filter = QStringLiteral("%1 = %2").arg(indexPropertyName).arg(this->formatedPropertyValue(idPropertyName, *primary));
+        QString statement = this->generateDeleteStatement(this->foreignInfo().tableName(), filter);
+
+        bool ok;
+        this->exec(statement, &ok);
+        return ok;
+    }
+
+    QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const override
     {
         const DataInfo info = primary.dataInfo();
-        const DataInfo foreignInfo = DataInfo::fromType<ForeignData>();
 
-        const QString filter = QStringLiteral("%1 = %2").arg(info.foreignFieldName()).arg(primary.id());
-        return this->generateSelectStatement(foreignInfo.tableName(), foreignInfo.record(), filter);
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = info.idPropertyName();
+
+        QString foreignFieldName;
+        if (!foreignProperty.isEmpty())
+            foreignFieldName = DataInfo::fieldNameFromPropertyName(foreignProperty);
+        else
+            foreignFieldName = info.foreignFieldName();
+
+        const QString filter = QStringLiteral("%1 = %2").arg(foreignFieldName).arg(primary.property(indexPropertyName).toInt());
+
+        const DataInfo foreignInfo = this->foreignInfo();
+        QSqlRecord record = foreignInfo.record();
+        {
+            QSqlField field = record.field(0);
+            field.setName(foreignInfo.tableName() + '.' + field.name());
+            record.replace(0, field);
+        }
+        return this->generateSelectStatement(foreignInfo.tableName(), record, filter);
     }
 };
 
 // Many To One Relationship
 
 template<typename ForeignData>
-class ManyToOneRelation : public SingleRelation<ForeignData>
+class SYSTEMUS_CORE_EXPORT ManyToOneRelation : public SingleRelation<ForeignData>
 {
 public:
     int relationshipType() const override
@@ -202,23 +410,106 @@ public:
 // Many To Many Relationship
 
 template<typename ForeignData>
-class ManyToManyRelation : public MultiRelation<ForeignData>
+class SYSTEMUS_CORE_EXPORT ManyToManyRelation : public MultiRelation<ForeignData>
 {
 public:
     ManyToManyRelation() = default;
 
-    ManyToManyRelation(const QString &table, const QStringList &fields) :
-        _junctionTable(table),
-        _junctionFields(fields)
-    { _junctionFields.prepend(DataInfo::fromType<ForeignData>().foreignFieldName()); }
+    ManyToManyRelation(const QStringList &fields) :
+        ManyToManyRelation(QString(), fields)
+    {}
+
+    ManyToManyRelation(const QString &table, const QStringList &properties) :
+        _junctionTable(table)
+    {
+        _junctionProperties.append(QPair<QString, QMetaType>("id", QMetaType::fromName("int")));
+
+        const QList<QSqlField> fields = DataInfo::fieldsFromString(properties.join(','), table, "ManyToManyRelation");
+        for (const QSqlField &field : fields) {
+            const QString propertyName = DataInfo::propertyNameFromFieldName(field.name());
+            _junctionProperties.append(QPair<QString, QMetaType>(propertyName, field.metaType()));
+        }
+
+        QPair<QString, QMetaType> foreignProperty(DataInfo::fromType<ForeignData>().foreignPropertyName(), QMetaType::fromName("QString"));
+        _junctionProperties.append(foreignProperty);
+    }
 
     ManyToManyRelation(const ManyToManyRelation<ForeignData> &data) = default;
 
-    QVariant junctionData(const QString &field, int index) const
-    { return _junctionData.at(index).value(field); }
+    int junctionId(int index) const
+    { return _junctionData.at(index).value("id").toInt(); }
+
+    void setJunctionId(int index, int id)
+    { _junctionData[index].insert("id", id); }
+
+    QVariant junctionData(const QString &property, int index) const
+    { return _junctionData.at(index).value(property); }
+
+    void setJunctionData(const QString &property, int index, const QVariant &value)
+    { _junctionData[index].insert(property, value); }
 
     QVariantHash junctionData(int index) const
     { return _junctionData.at(index); }
+
+    void setJunctionData(int index, const QVariantHash &data)
+    { _junctionData.replace(index, data); }
+
+    bool saveJunctionData(int index)
+    {
+        if (!_junctionData.at(index).contains("id"))
+            return this->insertJunctionData(index);
+        else
+            return this->updateJunctionData(index);
+    }
+
+    int insertJunctionData(int index)
+    {
+        QString statement = this->generateInsertStatement(this->junctionTable(), this->junctionRecord(index));
+        bool ok;
+        QSqlQuery query = this->exec(statement, &ok);
+
+        if (ok) {
+            _junctionData[index].insert("id", query.lastInsertId());
+            return true;
+        } else
+            return false;
+    }
+
+    bool updateJunctionData(int index)
+    {
+        const QString filter = "id = " + _junctionData.at(index).value("id").toInt();
+        QString statement = this->generateUpdateStatement(this->junctionTable(), this->junctionRecord(index), filter);
+
+        bool ok;
+        this->exec(statement, &ok);
+        return ok;
+    }
+
+    bool deleteJunctionData(int index)
+    {
+        bool ok = true;
+
+        if (_junctionData.at(index).contains("id")) {
+            const QString filter = QStringLiteral("id = %1").arg(_junctionData.at(index).value("id").toInt());
+            this->exec(this->generateDeleteStatement(this->junctionTable(), filter), &ok);
+        }
+
+        if (ok) {
+            this->removeAt(index);
+            return true;
+        } else
+            return false;
+    }
+
+    QSqlRecord junctionRecord(int index) const
+    {
+        QSqlRecord record = junctionRecord();
+        for (const QPair<QString, QMetaType> &property : _junctionProperties) {
+            const QString &propertyName = property.first;
+            record.setValue(DataInfo::fieldNameFromPropertyName(propertyName), _junctionData.at(index).value(propertyName));
+        }
+        return record;
+    }
 
     void clear() override
     { _junctionData.clear(); MultiRelation<ForeignData>::clear(); }
@@ -230,461 +521,124 @@ protected:
     ForeignData dataFromRecord(const QSqlRecord &record) override
     {
         QVariantHash data;
-        for (const QString &field : _junctionFields)
-            data.insert(field, record.value(field));
+        for (const QPair<QString, QMetaType> &property : _junctionProperties) {
+            const QString fieldName = DataInfo::fieldNameFromPropertyName(property.first);
+            data.insert(property.first, record.value(fieldName));
+        }
         _junctionData.append(data);
         return MultiRelation<ForeignData>::dataFromRecord(record);
     }
 
-    QString selectStatement(const Data &primary) const override
+    bool insertAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    { return updateAllData(primary, foreignProperty, indexProperty); }
+
+    bool updateAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        QString foreignPropertyName;
+        if (!foreignProperty.isEmpty())
+            foreignPropertyName = foreignPropertyName;
+        else
+            foreignPropertyName = primary->dataInfo().foreignPropertyName();
+
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = this->foreignInfo().foreignPropertyName();
+
+        QSqlRecord record = this->junctionRecord();
+
+        for (int i(0); i < this->size(); ++i) {
+            Data *data = &(*this)[i];
+            if (!data->save() || this->saveJunctionData(i))
+                return false;
+        }
+        return true;
+    }
+
+    bool deleteAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        Q_UNUSED(primary);
+        Q_UNUSED(foreignProperty);
+        Q_UNUSED(indexProperty);
+
+        for (int i(0); i < this->size(); ++i)
+            if (!this->deleteJunctionData(i))
+                return false;
+        return true;
+    }
+
+    QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const override
     {
         const DataInfo info = primary.dataInfo();
-        const DataInfo foreignInfo = DataInfo::fromType<ForeignData>();
+        const DataInfo foreignInfo = this->foreignInfo();
 
-        QSqlRecord record = foreignInfo.record();
-        {
-            QSqlField field = record.field(0);
-            field.setName(foreignInfo.tableName() + '.' + field.name());
-            record.replace(0, field);
-
-            const QList<QSqlField> fields = DataInfo::fieldsFromString(_junctionFields.join(','), _junctionTable, this->name());
-            for (const QSqlField &field : fields)
-                record.append(field);
+        QString indexPropertyName;
+        QString primaryFieldName;
+        if (!indexProperty.isEmpty()) {
+            indexPropertyName = indexProperty;
+            primaryFieldName = DataInfo::fieldNameFromPropertyName(indexProperty);
+        } else {
+            indexPropertyName = info.foreignPropertyName();
+            primaryFieldName = info.foreignFieldName();
         }
 
-        QString filter = QStringLiteral("%1 = %2").arg(info.foreignFieldName()).arg(primary.id());
-        QString join = QStringLiteral("%1 ON %1.%2 = %3.%4").arg(foreignInfo.tableName(), foreignInfo.idFieldName(), _junctionTable, foreignInfo.foreignFieldName());
+        QString foreignPropertyName;
+        QString foreignFieldName;
+        if (!foreignProperty.isEmpty()) {
+            foreignPropertyName = foreignProperty;
+            foreignFieldName = DataInfo::fieldNameFromPropertyName(foreignProperty);
+        } else {
+            foreignPropertyName = foreignInfo.foreignPropertyName();
+            foreignFieldName = foreignInfo.foreignFieldName();
+        }
+
+        QSqlRecord record = this->junctionRecord();
+        {
+            QSqlField idField;
+
+            idField = record.field(0);
+            idField.setName(this->junctionTable(primary) + ".id");
+            record.replace(0, idField);
+
+            QSqlRecord foreignRecord = foreignInfo.record();
+
+            idField = foreignRecord.field(0);
+            idField.setName(this->junctionTable(primary) + ".id");
+            foreignRecord.replace(0, idField);
+
+            for (int i(0); i < foreignRecord.count(); ++i)
+                record.append(foreignRecord.field(i));
+        }
+
+        QString join = QStringLiteral("%1 ON %1.%2 = %3.%4").arg(foreignInfo.tableName(), foreignInfo.idFieldName(), this->junctionTable(primary), foreignFieldName);
+        QString filter = QStringLiteral("%1 = %2").arg(primaryFieldName).arg(primary.id());
         QString statement = this->generateSelectStatement(_junctionTable, record, QString());
-        return statement + " LEFT  JOIN " + join + " WHERE " + filter;
+        return statement + (false ? " INNER JOIN " : " LEFT JOIN ") + join + " WHERE " + filter;
     }
 
 private:
+    QString junctionTable(const Data &primary = Data()) const
+    {
+        if (!_junctionTable.isEmpty())
+            return _junctionTable;
+        else
+            return primary.dataInfo().tableName().chopped(1) + this->foreignInfo().tableName();
+    }
+
+    QSqlRecord junctionRecord() const
+    {
+        QSqlRecord record;
+        for (const QPair<QString, QMetaType> &property : _junctionProperties)
+            record.append(QSqlField(DataInfo::fieldNameFromPropertyName(property.first), property.second));
+        return record;
+    }
+
     QString _junctionTable;
-    QStringList _junctionFields;
+    QList<QPair<QString, QMetaType>> _junctionProperties;
     QList<QVariantHash> _junctionData;
 };
-
-/*
-class DataRelationImpl;
-class SYSTEMUS_CORE_EXPORT DataRelation
-{
-public:
-    enum RelationshipType {
-        OneToOneRelationship,
-        OneToManyRelationship,
-        ManyToManyRelationship
-    };
-
-    DataRelation();
-    DataRelation(const DataRelation &other);
-    ~DataRelation();
-
-    DataRelation &operator=(const DataRelation &other);
-
-    QString name() const;
-
-    QString foreignFieldName() const;
-
-    Data data(int index) const;
-
-    QStringList propertyNames() const;
-    QVariant property(const QString &name, int index) const;
-    QVariant property(const QString &name, int index, const QVariant &defaultValue) const;
-    void setProperty(const QString &name, int index, const QVariant &value);
-
-    QJsonValue toJson() const;
-
-    bool isEmpty() const;
-    int count() const;
-    void clear();
-
-    bool get(const Data &primary);
-    bool get(const Data &primary, int index);
-
-    RelationshipType type() const;
-
-    bool operator==(const DataRelation &other) const;
-    inline bool operator!=(const DataRelation &other) const
-    { return !operator==(other); }
-
-protected:
-    DataRelation(DataRelationImpl *d);
-
-    QSharedDataPointer<DataRelationImpl> d;
-};
-
-class SYSTEMUS_CORE_EXPORT DataRelationImpl : public QSharedData
-{
-public:
-    DataRelationImpl(const QString &name);
-    DataRelationImpl(const DataRelationImpl &other);
-    virtual ~DataRelationImpl();
-
-    DataRelationImpl &operator=(const DataRelationImpl &other)
-    { _name = other._name; return *this; }
-
-    QString name() const;
-
-    virtual QString foreignFieldName() const;
-
-    virtual Data data(int index) const = 0;
-
-    virtual QStringList propertyNames() const = 0;
-    virtual QVariant property(const QString &name, int index) const = 0;
-    virtual void setProperty(const QString &name, int index, const QVariant &data) = 0;
-
-    virtual int count() const = 0;
-    virtual void clear() = 0;
-
-    virtual DataRelationImpl *clone() const = 0;
-
-    virtual bool equals(const DataRelationImpl *other) const = 0;
-
-    virtual QJsonValue toJson() const;
-
-    bool get(const Data &primary, int index);
-
-    virtual int type() const = 0;
-
-protected:
-    virtual void processRecord(const QSqlRecord &record) = 0;
-
-    virtual QString selectStatement(const Data &primary, int index) const = 0;
-
-private:
-    QString _name;
-};
-
-template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT DataRelationshipImpl : public DataRelationImpl
-{
-public:
-    DataRelationshipImpl() :
-        DataRelationImpl("relation")
-    {}
-
-    DataRelationshipImpl(const DataRelationshipImpl &other) = default;
-
-    DataRelationshipImpl<ForeignData> &operator=(const DataRelationshipImpl<ForeignData> &other)
-    { DataRelationImpl::operator=(other); return *this; }
-
-    QString foreignFieldName() const override
-    { return DataInfo::fromType<ForeignData>().foreignFieldName(); }
-
-    QStringList propertyNames() const override
-    {
-        QStringList properties;
-        const DataInfo info = DataInfo::fromType<ForeignData>();
-        for (int i(0); i < info.fieldCount(); ++i)
-            properties.append(info.propertyName(i));
-        return properties;
-    }
-
-protected:
-    void processRecord(const QSqlRecord &record) override
-    {
-        ForeignData data = Data::fromSqlRecord<ForeignData>(record);
-        data.getExtras();
-        saveData(data);
-    }
-
-    virtual void saveData(const ForeignData &data) = 0;
-
-    QString selectStatementForForeignData(const QString &filter) const
-    { return selectStatementForData<ForeignData>(filter); }
-
-    template<typename T>
-    QString selectStatementForData(const QString &filter) const
-    {
-        const DataInfo info = DataInfo::fromType<ForeignData>();
-        return selectStatementForRecord(info.tableName(), info.record(), QList<QSqlRelation>(), filter);
-    }
-
-    QString selectStatementForRecord(const QString &table, const QSqlRecord &record, const QList<QSqlRelation> &relations, const QString &filter) const
-    {
-        QStringList filters;
-        if (!filter.isEmpty())
-            filters.append(filter);
-
-        QString statement = Data::driver()->sqlStatement(QSqlDriver::SelectStatement, table, record, false);
-        if (!filters.isEmpty())
-            statement.append(" WHERE " + filters.join(" AND "));
-        return statement;
-    }
-};
-
-template<typename PrimaryData, typename ForeignData, typename RelationshipImpl>
-class DataRelationship : public DataRelationshipImpl<ForeignData>
-{
-public:
-    template<typename... Args>
-    DataRelationship(Args... args)
-    { d = new RelationshipImpl(std::forward<Args>(args) ...); }
-
-    ForeignData operator->() const
-    { return d->data(0); }
-
-    ForeignData &operator->()
-    { return d->data(0); }
-
-    operator ForeignData() const
-    { return d->data(0); }
-
-    ForeignData object() const
-    { return d->data(0); }
-
-    ForeignData at(int index) const
-    { return d->data(index); }
-
-    ForeignData operator[](int index) const
-    { return d->data(index); }
-
-    ForeignData &operator[](int index)
-    { return d->data(index); }
-
-    QString foreignFieldName() const override;
-
-    Data data(int index) const override;
-
-    QStringList propertyNames() const override;
-    QVariant property(const QString &name, int index) const override;
-    void setProperty(const QString &name, int index, const QVariant &data) override;
-
-    int count() const override;
-    void clear() override;
-
-    DataRelationImpl *clone() const override;
-
-    bool equals(const DataRelationImpl *other) const override;
-
-    QJsonValue toJson() const override;
-
-    int type() const override;
-
-protected:
-    void processRecord(const QSqlRecord &record) override;
-    QString selectStatement(const Data &primary, int index) const override;
-
-private:
-    QSharedDataPointer<RelationshipImpl> d;
-};
-
-template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT OneToOneRelationshipImpl : public DataRelationshipImpl<ForeignData>
-{
-public:
-    OneToOneRelationshipImpl() :
-        OneToOneRelationshipImpl<ForeignData>(DataInfo::fromType<ForeignData>().foreignFieldName())
-    {}
-
-    OneToOneRelationshipImpl(const QString &foreignField) :
-        _foreignFieldName(_foreignFieldName)
-    {}
-
-    OneToOneRelationshipImpl(const OneToOneRelationshipImpl<ForeignData> &other) = default;
-
-    ForeignData operator->() const
-    { return _data; }
-
-    ForeignData &operator->()
-    { return _data; }
-
-    operator ForeignData() const
-    { return _data; }
-
-    ForeignData object() const
-    { return _data; }
-
-    Data data(int index) const override
-    { Q_UNUSED(index); return _data; }
-
-    QVariant property(const QString &name, int index) const override
-    { Q_UNUSED(index); return _data.property(name); }
-
-    void setProperty(const QString &name, int index, const QVariant &value) override
-    { Q_UNUSED(index); _data.setProperty(name, value); }
-
-    int count() const override
-    { return (_data.isValid() ? 1 : 0); }
-
-    void clear() override
-    { _data.clear(); }
-
-    DataRelationImpl *clone() const override
-    { return new OneToOneRelationshipImpl<ForeignData>(*this); }
-
-    bool equals(const DataRelationImpl *o) const override
-    {
-        auto other = static_cast<const OneToOneRelationshipImpl<ForeignData> *>(o);
-        return _data == other->_data && _foreignFieldName == other->_foreignFieldName;
-    }
-
-    int type() const override
-    { return DataRelation::OneToOneRelationship; }
-
-protected:
-    void processsRecord(const QSqlRecord &record) override
-    { _data = Data::fromSqlRecord<ForeignData>(record); }
-
-    QString selectStatement(const Data &primary, int index) const override
-    { return selectStatement(QStringLiteral("id = %1").arg(primary.id())); }
-
-private:
-    ForeignData _data;
-    const QString _foreignFieldName;
-};
-
-template<typename ForeignData>
-class MultiDataRelationship : public DataRelationshipImpl<ForeignData>, public QList<ForeignData>
-{
-public:
-    MultiDataRelationship(const QString &foreignFieldName) :
-        _foreignFieldName(foreignFieldName)
-    {}
-
-    MultiDataRelationship(const MultiDataRelationship<ForeignData> &other)
-    { DataRelationshipImpl<ForeignData>::operator=(other); }
-
-    virtual ~MultiDataRelationship() = default;
-
-    MultiDataRelationship<ForeignData> &operator=(const MultiDataRelationship<ForeignData> &other)
-    { DataRelationshipImpl<ForeignData>::operator=(other); QList<ForeignData>::operator=(other); return *this; }
-
-    QString foreignFieldName() const override
-    { return _foreignFieldName; }
-
-    Data data(int index) const override
-    { return QList<ForeignData>::at(index); }
-
-    QVariant property(const QString &name, int index) const override
-    { return QList<ForeignData>::at(index).property(name); }
-    void setProperty(const QString &name, int index, const QVariant &data) override
-    { QList<ForeignData>::operator[](index).setProperty(name, data); }
-
-    int count() const override
-    { return QList<ForeignData>::count(); }
-    void clear() override
-    { QList<ForeignData>::clear(); }
-    bool equals(const DataRelationImpl *o) const override
-    {
-        auto other = static_cast<const MultiDataRelationship<ForeignData> *>(o);
-        return QList<ForeignData>::operator==(*other)
-               && _foreignFieldName == other->_foreignFieldName;
-    }
-
-protected:
-    void saveData(const ForeignData &data) override
-    { QList<ForeignData>::append(data); }
-
-    const QString _foreignFieldName;
-};
-
-template<typename ForeignData>
-class OneToManyRelationshipImpl : public MultiDataRelationship<ForeignData>
-{
-public:
-    OneToManyRelationshipImpl(const QString &foreignFieldName) :
-        MultiDataRelationship<ForeignData>(foreignFieldName)
-    {}
-
-    OneToManyRelationshipImpl(const OneToManyRelationshipImpl<ForeignData> &other) = default;
-
-    OneToManyRelationshipImpl<ForeignData> &operator=(const OneToManyRelationshipImpl<ForeignData> &other)
-    { MultiDataRelationship<ForeignData>::operator=(other); return *this; }
-
-    DataRelationImpl *clone() const override
-    { return new OneToManyRelationshipImpl<ForeignData>(*this); }
-
-    int type() const override
-    { return DataRelation::OneToManyRelationship; }
-
-protected:
-    QString selectStatement(const Data &primary, int index) const override
-    {
-        QString filter = QStringLiteral("%1 = %2").arg(primary.dataInfo().foreignFieldName()).arg(primary.id());
-        return this->selectStatementForForeignData(filter);
-    }
-};
-
-template<typename ForeignData>
-class ManyToManyRelationshipImpl : public MultiDataRelationship<ForeignData>
-{
-public:
-    ManyToManyRelationshipImpl(const QString &table, const QStringList &fields) :
-        _junctionTable(table),
-        _junctionFields(DataInfo::fromType<ForeignData>().foreignFieldName() + fields)
-    {}
-
-    ManyToManyRelationshipImpl(const ManyToManyRelationshipImpl<ForeignData> &other) = default;
-
-    QStringList propertyNames() const override
-    { return MultiDataRelationship<ForeignData>::propertyNames() + _junctionFields; }
-
-    QVariant property(const QString &name, int index) const override
-    {
-        int dataIndex = _junctionFields.indexOf(name);
-        if (dataIndex >= 0)
-            return _junctionData.at(index).value(name);
-        else
-            return MultiDataRelationship<ForeignData>::property(name, index);
-    }
-
-    void setProperty(const QString &name, int index, const QVariant &value) override
-    {
-        int dataIndex = _junctionFields.indexOf(name);
-        if (dataIndex >= 0)
-            _junctionData[dataIndex].insert(name, value);
-        else
-            MultiDataRelationship<ForeignData>::setProperty(name, index, value);
-    }
-
-    DataRelationImpl *clone() const override
-    { return new ManyToManyRelationshipImpl<ForeignData>(*this); }
-
-    int type() const override
-    { return DataRelation::ManyToManyRelationship; }
-
-protected:
-    void processRecord(const QSqlRecord &record) override
-    {
-        QVariantHash data;
-        for (const QString &field : _junctionFields)
-            data.insert(field, record.value(field));
-        _junctionData.append(data);
-
-        MultiDataRelationship<ForeignData>::processRecord(record);
-    }
-
-    QString selectStatement(const Data &primary, int index) const override
-    {
-        QString table = _junctionTable;
-
-        const DataInfo foreignInfo = DataInfo::fromType<ForeignData>();
-
-        QSqlRecord record = foreignInfo.record();
-
-        QSqlField idField = record.field(0);
-        idField.setName(_junctionTable + ".id");
-        record.replace(0, idField);
-
-        for (const QString &field : _junctionFields)
-            record.append(QSqlField(field, QMetaType()));
-
-        QSqlRelation relation(foreignInfo.tableName(), foreignInfo.foreignFieldName(), QString());
-
-        QString filter = QStringLiteral("%1 = %2").arg(foreignInfo.foreignFieldName()).arg(primary.id());
-
-        return this->selectStatementForRecord(table, record, QList<QSqlRelation>() << relation, filter);
-    }
-
-    const QString _junctionTable;
-    const QStringList _junctionFields;
-    QList<QVariantHash> _junctionData;
-};
-*/
 
 }
 
 #endif // SYSTEMUS_DATARELATION_H
-
-//#include <SystemusCore/datarelation_impl.h>

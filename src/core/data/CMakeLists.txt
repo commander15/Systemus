@@ -3,11 +3,14 @@ target_headers(core
         data.h
         datarelation.h
         authorizationdata.h
+        abstractdatamodel.h
+        datatablemodel.h
         datamodel.h
     PRIVATE
         data_p.h
         authorizationdata_p.h
-        datamodel_p.h
+        abstractdatamodel_p.h
+        datatablemodel_p.h
 )
 
 target_sources(core
@@ -15,5 +18,6 @@ target_sources(core
         data.cpp
         datarelation.cpp
         authorizationdata.cpp
-        datamodel.cpp
+        abstractdatamodel.cpp
+        datatablemodel.cpp
 )

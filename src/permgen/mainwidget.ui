@@ -34,7 +34,7 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QLineEdit" name="nameInput"/>
+          <widget class="QLineInput" name="nameInput"/>
          </item>
          <item row="1" column="0">
           <widget class="QLabel" name="descriptionLabel">
@@ -44,7 +44,7 @@
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QLineEdit" name="descriptionInput"/>
+          <widget class="QLineInput" name="descriptionInput"/>
          </item>
         </layout>
        </item>
@@ -154,7 +154,7 @@
         </widget>
        </item>
        <item row="0" column="0" colspan="2">
-        <widget class="QPlainTextEdit" name="scriptOutput">
+        <widget class="QPlainTextInput" name="scriptOutput">
          <property name="readOnly">
           <bool>true</bool>
          </property>

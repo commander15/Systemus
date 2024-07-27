@@ -12,6 +12,10 @@ InterfaceStack::InterfaceStack(QWidget *parent) :
     ui->setupUi(this);
 
     connect(ui->stackedWidget, &QStackedWidget::currentChanged, this, &InterfaceStack::processWidgetChange);
+
+    const QIcon appIcon = qApp->windowIcon();;
+    if (!appIcon.isNull())
+        ui->systemLogoOutput->setPixmap(appIcon.pixmap(ui->systemLogoOutput->maximumSize()));
 }
 
 InterfaceStack::~InterfaceStack()
@@ -80,7 +84,13 @@ void InterfaceStack::showInterface()
 
 void InterfaceStack::processWidgetChange(int index)
 {
-    emit currentIndexChanged(index - 1);
+    index -= 1;
+    emit currentIndexChanged(index);
+}
+
+void InterfaceStack::translateUi()
+{
+    //
 }
 
 }

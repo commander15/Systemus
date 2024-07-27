@@ -27,12 +27,28 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>16</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
       <number>0</number>
      </property>
      <widget class="QWidget" name="loginPage">
-      <layout class="QGridLayout" name="gridLayout" rowminimumheight="2,1,1,2,2,2">
+      <layout class="QGridLayout" name="gridLayout">
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -45,23 +61,65 @@
        <property name="bottomMargin">
         <number>0</number>
        </property>
-       <item row="1" column="0">
-        <widget class="QLabel" name="systemNameOutput">
-         <property name="font">
-          <font>
-           <pointsize>20</pointsize>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Systemus</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,1">
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>250</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="systemLogoOutput">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>80</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>320</width>
+             <height>80</height>
+            </size>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="pixmap">
+            <pixmap resource="../resources/systemus_widgets_res.qrc">:/systemus/icons/systemus.png</pixmap>
+           </property>
+           <property name="scaledContents">
+            <bool>true</bool>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>210</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </item>
-       <item row="5" column="0">
+       <item row="4" column="0">
         <spacer name="verticalSpacer_2">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -74,7 +132,7 @@
          </property>
         </spacer>
        </item>
-       <item row="4" column="0">
+       <item row="3" column="0">
         <widget class="QGroupBox" name="authenticationGroup">
          <property name="title">
           <string>Authentication</string>
@@ -139,70 +197,12 @@
          </layout>
         </widget>
        </item>
-       <item row="0" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,1">
-         <item>
-          <spacer name="horizontalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>250</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QLabel" name="systemLogoOutput">
-           <property name="maximumSize">
-            <size>
-             <width>64</width>
-             <height>64</height>
-            </size>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="pixmap">
-            <pixmap resource="../resources/systemus_widgets_res.qrc">:/systemus/icons/login_icon.png</pixmap>
-           </property>
-           <property name="scaledContents">
-            <bool>true</bool>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_4">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>210</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-       <item row="2" column="0">
-        <spacer name="verticalSpacer">
+       <item row="5" column="0">
+        <widget class="Line" name="line_3">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Horizontal</enum>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -280,7 +280,7 @@
          <widget class="QWidget" name="generalTab">
           <attribute name="icon">
            <iconset resource="../resources/systemus_widgets_res.qrc">
-            <normaloff>:/systemus/icons/login_settings.png</normaloff>:/systemus/icons/login_settings.png</iconset>
+            <normaloff>:/systemus/icons/systemus_mini.png</normaloff>:/systemus/icons/systemus_mini.png</iconset>
           </attribute>
           <attribute name="title">
            <string>General</string>
@@ -680,6 +680,10 @@
    </property>
   </action>
   <action name="actionShowPassword">
+   <property name="icon">
+    <iconset resource="../resources/systemus_widgets_res.qrc">
+     <normaloff>:/systemus/icons/password_show.png</normaloff>:/systemus/icons/password_show.png</iconset>
+   </property>
    <property name="text">
     <string>Show Password</string>
    </property>
@@ -699,6 +703,10 @@
    </property>
   </action>
   <action name="actionDatabaseUser">
+   <property name="icon">
+    <iconset resource="../resources/systemus_widgets_res.qrc">
+     <normaloff>:/systemus/icons/login_id.png</normaloff>:/systemus/icons/login_id.png</iconset>
+   </property>
    <property name="text">
     <string>User</string>
    </property>

@@ -8,6 +8,9 @@
 #include <QtSql/qsqlfield.h>
 #include <QtSql/qsqldriver.h>
 
+#include <QtCore/qstandardpaths.h>
+#include <QtCore/qfile.h>
+
 namespace Systemus {
 
 System::System(QObject *parent) :
@@ -25,6 +28,46 @@ System::System(QObject *parent) :
     QTimer::singleShot(0, this, &System::sync);
 
     _s_register_internal_types();
+
+    d->nowTimerId = startTimer(1000);
+    d->heartBeatTimerId = startTimer(d->heartBeatInterval);
+}
+
+bool System::isLogoAvailable() const
+{
+    return !d->logoData.isEmpty();
+}
+
+QString System::logoFileName() const
+{
+    QString path = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/Systemus";
+    return path + "/" + d->name + ".png";
+}
+
+QByteArray System::logoData()
+{
+    if (!d->logoData.isEmpty())
+        return d->logoData;
+
+    QFile file(logoFileName());
+    const QString logoFile = logoFileName();
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        d->logoData = file.readAll();
+    } else {
+        bool ok;
+        QSqlQuery query = Data::execQuery("SELECT logo FROM Systems LIMIT 1", &ok);
+
+        if (ok && query.next()) {
+            d->logoData = query.value(0).toByteArray();
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(d->logoData);
+                file.flush();
+                file.close();
+            }
+        }
+    }
+
+    return d->logoData;
 }
 
 System::~System()
@@ -39,6 +82,21 @@ QString System::name() const
 QVersionNumber System::version() const
 {
     return d->version;
+}
+
+QDate System::currentDate() const
+{
+    return d->now.date();
+}
+
+QTime System::currentTime() const
+{
+    return d->now.time();
+}
+
+QDateTime System::now() const
+{
+    return d->now;
 }
 
 bool System::hasSetting(const QString &name) const
@@ -75,17 +133,26 @@ bool System::isOnline() const
 
 int System::heartBeatInterval() const
 {
-    return d->timer.interval();
+    return d->heartBeatInterval;
 }
 
-void System::setHeartInterval(int interval)
+void System::setHeartBeatInterval(int interval)
 {
-    d->timer.setInterval(interval);
+    if (interval <= 0)
+        interval = 60000;
+
+    if (d->heartBeatInterval != interval) {
+        killTimer(d->heartBeatTimerId);
+        d->heartBeatTimerId = startTimer(interval);
+        d->heartBeatInterval = interval;
+    }
 }
 
 void System::sync()
 {
-    d->getData();
+    if (d->name.isEmpty())
+        d->getData();
+
     d->syncSettings(true);
 }
 
@@ -94,6 +161,19 @@ System *System::instance()
     if (!_instance)
         _instance.reset(new System());
     return _instance.get();
+}
+
+void System::timerEvent(QTimerEvent *event)
+{
+    if (event->timerId() == d->nowTimerId) {
+        d->now = d->now.addSecs(1);
+        event->accept();
+    } else if (event->timerId() == d->heartBeatTimerId) {
+        sync();
+        event->accept();
+    } else {
+        QObject::timerEvent(event);
+    }
 }
 
 void System::setUser(const User &user)
@@ -106,19 +186,18 @@ QScopedPointer<System> System::_instance;
 SystemPrivate::SystemPrivate(System *q) :
     q(q),
     now(QDateTime::currentDateTime()),
+    nowTimerId(-1),
 #ifdef QT_DEBUG
     settings("systemus.ini", QSettings::IniFormat),
 #endif
+    heartBeatInterval(60000),
+    heartBeatTimerId(-1),
     _online(false)
 {
     settings.beginGroup("System");
     name = settings.value("name").toString();
     version = QVersionNumber::fromString(settings.value("version").toString());
     settings.endGroup();
-
-    timer.setInterval(3000);
-    timer.start();
-    connect(&timer, &QTimer::timeout, this, &SystemPrivate::update);
 
     QTimer::singleShot(0, this, [=] { setOnline(!name.isEmpty()); });
 }
@@ -139,26 +218,16 @@ void SystemPrivate::setOnline(bool online)
 void SystemPrivate::update()
 {
     setOnline(getData());
-
-    if (_online) {
-        QDateTime now = QDateTime::currentDateTime();
-        if ((!dirtySettingKeys.isEmpty() && lastSettingsSyncTime.msecsTo(now) > 60000) || (lastSettingsSyncTime.msecsTo(now) > 1800000)) {
-            // Sync settings after 60 seconds if there are local changes, every 30 minutes if there are not !
-            syncSettings();
-            lastSettingsSyncTime = now.addSecs(5);
-        }
-    }
 }
 
 bool SystemPrivate::getData()
 {
     bool ok;
-    QSqlQuery query = Data::execQuery("SELECT name, version, CURRENT_TIMESTAMP FROM Systems ORDER BY id DESC LIMIT 1", &ok);
+    QSqlQuery query = Data::execQuery("SELECT name, version FROM Systems ORDER BY id DESC LIMIT 1", &ok);
 
     if (ok && query.next()) {
         name = query.value(0).toString();
         version = QVersionNumber::fromString(query.value(1).toString());
-        now = query.value(2).toDateTime();
 
         settings.beginGroup("System");
         settings.setValue("name", name);

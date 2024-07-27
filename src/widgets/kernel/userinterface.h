@@ -6,8 +6,13 @@
 #include <QtWidgets/qwidget.h>
 
 class QTextDocument;
+class QPageLayout;
 
 namespace Systemus {
+
+class DataEdit;
+
+typedef DataEdit*(DataEditCreation)();
 
 class UserInterfacePrivate;
 class SYSTEMUS_WIDGETS_EXPORT UserInterface : public QWidget
@@ -16,17 +21,6 @@ class SYSTEMUS_WIDGETS_EXPORT UserInterface : public QWidget
     Q_PROPERTY(QByteArray interfaceId READ interfaceId CONSTANT)
 
 public:
-    enum InterfaceAction {
-        SearchAction,
-        RefreshAction,
-        ShowAction,
-        AddAction,
-        EditAction,
-        DeleteAction,
-        PrintAction,
-        UserAction = 255
-    };
-
     enum InterfaceType {
         DefaultInterface,
         StandardInterface
@@ -46,13 +40,15 @@ public:
     Q_SLOT void setInterfaceTitle(const QString &title);
     Q_SIGNAL void interfaceTitleChanged(const QString &title);
 
+    virtual bool canHandleAction(int action) const;
     virtual bool supportAction(int action) const;
-    QVariant trigger(int action, const QVariant &data = QVariant());
+    QVariant trigger(int action, const QVariantList &data = QVariantList());
     Q_SIGNAL void actionSupportUpdated(int action, bool supported);
+    Q_SIGNAL void externalActionRequested(const QByteArray &targetId, int action, const QVariantList &data);
 
     QAction *interfaceAction() const;
 
-    Q_SIGNAL void printingRequested(QTextDocument *document);
+    Q_SIGNAL void printingRequested(QTextDocument *document, const QPageLayout &layout);
 
     virtual InterfaceType interfaceType() const
     { return DefaultInterface; }
@@ -66,9 +62,17 @@ protected:
     virtual void cleanupUi();
     virtual void translateUi();
 
-    virtual QVariant processAction(int action, const QVariant &data);
+    virtual QVariant processAction(int action, const QVariantList &data);
+
+    void switchToInterface(const QByteArray &id);
+    void requestServerAction(int action, const QVariantList &data = QVariantList());
+    void requestExternalAction(int action, const QVariantList &data = QVariantList());
+    void requestExternalAction(const QByteArray &targetId, int action, const QVariantList &data = QVariantList());
 
     mutable QScopedPointer<UserInterfacePrivate> d_ptr;
+
+private:
+    void setEditWidget(DataEdit *edit);
 };
 
 }

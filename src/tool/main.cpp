@@ -34,6 +34,9 @@ int main(int argc, char *argv[])
             const QStringList appArguments = app.arguments();
 
             runArguments.append(appArguments.at(0));
+            if (appArguments.size() >= 2 && appArguments.at(1).startsWith('-'))
+                runArguments.append(appArguments.at(1));
+
             runArguments.append(arguments);
 
             for (int i(2); i < appArguments.size(); ++i)
@@ -43,7 +46,7 @@ int main(int argc, char *argv[])
         return command->run(runArguments);
     } else {
         QTextStream() << "error: unknown command" << Qt::endl;
-        return UNKNWON_COMMAND_ERROR;
+        return COMMAND_UNKNOWN_ERROR;
     }
 }
 

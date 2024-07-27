@@ -1,9 +1,12 @@
 #include "interfaceholder.h"
 
+#include <SystemusWidgets/userinterface.h>
+
 namespace Systemus {
 
 InterfaceHolder::InterfaceHolder()
-{}
+{
+}
 
 InterfaceHolder::~InterfaceHolder()
 {
@@ -17,6 +20,17 @@ UserInterface *InterfaceHolder::currentInterface() const
 int InterfaceHolder::addInterface(UserInterface *interface)
 {
     return insertInterface(count(), interface);
+}
+
+UserInterface *InterfaceHolder::interfaceById(const QByteArray &id) const
+{
+    for (int i(0); i < count(); ++i) {
+        UserInterface *interface = this->interface(i);
+        if (interface->interfaceId() == id)
+            return interface;
+    }
+
+    return nullptr;
 }
 
 int InterfaceHolder::indexOf(UserInterface *interface) const
@@ -80,16 +94,20 @@ int SimpleInterfaceHolder::count() const
 
 int SimpleInterfaceHolder::addInterface(UserInterface *interface)
 {
+    if (!_interfaces.contains(interface))
+        registerInterface(interface);
+
     _interfaces.append(interface);
-    registerInterface(interface);
     return _interfaces.count() - 1;
 }
 
 int SimpleInterfaceHolder::insertInterface(int index, UserInterface *interface)
 {
     if (index >= 0 && index <= _interfaces.size()) {
+        if (!_interfaces.contains(interface))
+            registerInterface(interface);
+
         _interfaces.insert(index, interface);
-        registerInterface(interface);
         return index;
     } else
         return -1;
@@ -97,6 +115,9 @@ int SimpleInterfaceHolder::insertInterface(int index, UserInterface *interface)
 
 void SimpleInterfaceHolder::removeInterface(UserInterface *interface)
 {
+    if (!_interfaces.contains(interface))
+        return;
+
     unregisterInterface(interface);
     _interfaces.removeOne(interface);
 }

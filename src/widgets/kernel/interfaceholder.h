@@ -28,6 +28,7 @@ public:
     virtual int insertInterface(int index, UserInterface *interface) = 0;
     virtual void removeInterface(UserInterface *interface) = 0;
 
+    virtual UserInterface *interfaceById(const QByteArray &id) const;
     virtual int indexOf(UserInterface *interface) const;
 
 protected:

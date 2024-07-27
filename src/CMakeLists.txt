@@ -27,7 +27,7 @@ if (Systemus_BUILD_WIDGETS)
 
     if (Systemus_BUILD_TOOL)
         add_subdirectory(manager)
-        add_subdirectory(permgen)
+        #add_subdirectory(permgen)
     endif()
 
     install(EXPORT SystemusWidgetsTargets NAMESPACE Systemus:: DESTINATION lib/cmake/Systemus)

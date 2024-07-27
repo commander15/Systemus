@@ -3,6 +3,10 @@
 
 #include <SystemusCore/global.h>
 
+#ifdef QT_GUI_LIB
+#   include <QtGui/qimage.h>
+#endif
+
 #include <QtCore/qobject.h>
 
 class QVersionNumber;
@@ -20,8 +24,15 @@ class SYSTEMUS_CORE_EXPORT System : public QObject
 public:
     ~System();
 
+#ifdef QT_GUI_LIB
+    inline QImage logo() const;
+#endif
     QString name() const;
     QVersionNumber version() const;
+
+    QDate currentDate() const;
+    QTime currentTime() const;
+    QDateTime now() const;
 
     bool hasSetting(const QString &name) const;
     QVariant setting(const QString &name) const;
@@ -37,7 +48,7 @@ public:
     Q_SIGNAL void onlineStateChanged(bool online);
 
     int heartBeatInterval() const;
-    void setHeartInterval(int interval);
+    void setHeartBeatInterval(int interval);
 
     Q_SLOT void sync();
     Q_SIGNAL void notify();
@@ -46,8 +57,15 @@ public:
 
     static System *instance();
 
+protected:
+    void timerEvent(QTimerEvent *event) override;
+
 private:
     System(QObject *parent = nullptr);
+
+    bool isLogoAvailable() const;
+    QString logoFileName() const;
+    QByteArray logoData();
 
     Q_SLOT void setUser(const User &user);
 
@@ -68,6 +86,22 @@ public:
     QDate date() const;
     QTime time() const;
 };*/
+
+#ifdef QT_GUI_LIB
+
+QImage System::logo() const
+{
+    QImage image;
+    if (isLogoAvailable()) {
+        image.load(logoFileName());
+    } else {
+        image.loadFromData(_instance->logoData(), "PNG");
+        image.save(logoFileName(), "PNG");
+    }
+    return image;
+}
+
+#endif
 
 }
 

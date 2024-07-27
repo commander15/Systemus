@@ -1,6 +1,8 @@
 #include "authorizationdata.h"
 #include "authorizationdata_p.h"
 
+#include <SystemusCore/system.h>
+
 namespace Systemus {
 
 AuthorizationData::AuthorizationData() :
@@ -89,14 +91,16 @@ bool AuthorizationData::isValid() const
     return !d->name.isEmpty() && Data::isValid();
 }
 
-bool AuthorizationData::insert()
+bool AuthorizationData::insertExtras(ExtraType type)
 {
-    S_D(AuthorizationData);
-    d->creationDate = QDate::currentDate();
-    d->creationTime = QTime::currentTime();
-    return Data::insert();
+    if (type == PreExtra) {
+        S_D(AuthorizationData);
+        const QDateTime now = System::instance()->now();
+        d->creationDate = now.date();
+        d->creationTime = now.time();
+    }
+
+    return Data::insertExtras(type);
 }
-
-
 
 }

@@ -1,47 +1,80 @@
 #include "installcommand.h"
 
-#include <QtSql/qsqlquery.h>
-#include <QtSql/qsqlerror.h>
+#include <SystemusCore/global.h>
 
-#include <QtCore/qjsonobject.h>
-#include <QtCore/qjsonarray.h>
+#include <QtSql/qsqldatabase.h>
+#include <QtSql/qsqlquery.h>
+#include <QtSql/qsqldriver.h>
+#include <QtSql/qsqlrecord.h>
+
+#include <QtCore/qdatetime.h>
 
 void InstallCommand::prepareCommand(QCommandLineParser *parser)
 {
+    Q_UNUSED(parser);
 }
 
 int InstallCommand::runCommand(const QCommandLineParser &parser)
 {
-    // ToDo: must get system general infos, users, roles, groups, privileges, permissions and notifications !
+    const QString fileName = QStringLiteral(":/scripts/%1/Systemus%2.sql");
+    const QString database = QSqlDatabase::database().driverName().mid(1, -1);
 
-    if (runScripts() != 0)
-        return DATABASE_CONNECTION_ERROR;
+    const QStringList versionNames = { "1.0.0" };
+    const int installedVersion = 0;
+    const int latestVersion = 0;
 
-    return true;
-}
+    QSqlDriver *driver = QSqlDatabase::database().driver();
+    QSqlQuery query;
 
-int InstallCommand::runScripts()
-{
-    const int version = 0; // Must be deduced from the database if the Systems table exists and has at least one record !
-    int errors = 0;
-
-    for (int i(version); i < version; ++i) {
-        const QString fileName(":/scripts/Systemus" + QString::number(i) + ".sql");
-
+    for (int i(0); i <= latestVersion; ++i) {
         QByteArray request;
-        readFileCharByChar(fileName, [&request, &errors, this](const char &c) {
-            if (c == ' ');
-            else if (c != ';')
-                request.append(c);
-            else {
-                QSqlQuery query;
-                if (!query.exec(request)) {
-                    out << query.lastError().databaseText() << Qt::endl;
-                    ++errors;
+        readFileLineByLine(fileName.arg(database).arg(i), [&request](const QByteArray &line) {
+            request.append(line);
+
+            if (line.endsWith(';')) {
+                QSqlQuery q;
+                if (!q.exec(request)) {
+                    //...
                 }
+                    //out << q.lastError() << ;
+                request.clear();
             }
         });
+
+        // Updating system data...
+        if (i == 0) {
+            QSqlRecord record;
+            record.setValue(0, "Systemus");
+            record.setValue(1, SYSTEMUS_VERSION_STR);
+
+            QString statement = driver->sqlStatement(QSqlDriver::InsertStatement, "Systems", record, false);
+            query.exec(statement);
+        }
+
+        {
+            QSqlRecord record;
+            record.setValue(0, i);
+            record.setValue(1, versionNames.at(i));
+            record.setValue(2, QDate::currentDate());
+            record.setValue(3, QTime::currentTime());
+
+            QString statement = driver->sqlStatement(QSqlDriver::InsertStatement, "SystemInstallations", record, false);
+            query.exec(statement);
+        }
+
+        if (i == latestVersion) {
+            QSqlRecord record;
+            record.setValue(0, "Updated to version " + versionNames.at(i) + " !");
+            record.setValue(1, "System has been updated to version " + versionNames.at(i) + " !");
+            record.setValue(2, "{}");
+            record.setValue(3, "Update");
+            record.setValue(4, QDate::currentDate());
+            record.setValue(5, QTime::currentTime());
+
+            QString statement = driver->sqlStatement(QSqlDriver::InsertStatement, "SystemNotifications", record, false);
+            query.exec(statement);
+        }
     }
 
-    return errors;
+    return 0;
 }

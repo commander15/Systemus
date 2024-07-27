@@ -1,7 +1,7 @@
 {
     "name": "Systemus",
     "database": {
-        "name": "Systemus",
+        "name": "TMS",
         "user": "root",
         "password": "",
         "host": "127.0.0.1",

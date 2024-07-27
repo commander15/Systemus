@@ -9,7 +9,7 @@
 
 namespace Systemus {
 
-class DataModel;
+class AbstractDataModel;
 
 class SYSTEMUS_WIDGETS_EXPORT TableView : public QTableView
 {
@@ -41,10 +41,12 @@ public:
 
     Q_SIGNAL void dataDoubleClicked(const Data &data);
 
-    DataModel *model() const;
-    void setModel(DataModel *model);
+    AbstractDataModel *model() const;
+    void setModel(AbstractDataModel *model);
 
 private:
+    Q_SLOT void configureHeaders();
+
     Q_SLOT void processDoubleClick(const QModelIndex &index);
 };
 

@@ -2,24 +2,36 @@ target_headers(widgets
     PUBLIC
         global.h
         interfaceholder.h
+        interfaceserver.h
         toolbar.h
         centralwidget.h
         interfacestack.h
         userinterface.h
         standarduserinterface.h
         tableview.h
+        dataedit.h
+        #filterwidget.h
     PRIVATE
+        interfaceserver_p.h
+        interfacestack_p.h
         userinterface_p.h
         standarduserinterface_p.h
+        dataedit_p.h
+        #filterwidget_p.h
+        #filterwidgetimpl_p.h
 )
 
 target_sources(widgets
     PRIVATE
         interfaceholder.cpp
+        interfaceserver.cpp
         toolbar.cpp
         centralwidget.cpp
         interfacestack.cpp
         userinterface.cpp
         standarduserinterface.cpp
         tableview.cpp
+        dataedit.cpp
+        #filterwidget.cpp
+        #filterwidgetimpl.cpp
 )

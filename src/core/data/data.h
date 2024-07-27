@@ -24,18 +24,18 @@ private:
 public: \
     static int count(const QString &filter = QString(), QSqlError *error = nullptr) \
     { return Systemus::Data::count<Class>(filter, error); } \
-    static inline QList<Class> all(QSqlError *error = nullptr) \
-    { return Systemus::Data::all<Class>(error); } \
-    static inline QList<Class> find(const Systemus::DataSearch &query, QSqlError *error = nullptr) \
-    { return Systemus::Data::find<Class>(query, error); } \
-    static inline QList<Class> fromSqlQuery(QSqlQuery &query) \
-    { return Systemus::Data::fromSqlQuery<Class>(query); } \
-    static inline QList<Class> fromSqlRecords(const QList<QSqlRecord> &records) \
-    { return Systemus::Data::fromSqlRecords<Class>(records); } \
-    static inline Class fromId(int id) \
-    { return Systemus::Data::fromId<Class>(id); } \
-    static inline Class fromSqlRecord(const QSqlRecord &record) \
-    { return Systemus::Data::fromSqlRecord<Class>(record); } \
+    static inline QList<Class> all(bool withExtras = true, QSqlError *error = nullptr) \
+    { return Systemus::Data::all<Class>(withExtras, error); } \
+    static inline QList<Class> find(const Systemus::DataSearch &query, bool withExtras = true, QSqlError *error = nullptr) \
+    { return Systemus::Data::find<Class>(query, withExtras, error); } \
+    static inline QList<Class> fromSqlQuery(QSqlQuery &query, bool withExtras = true) \
+    { return Systemus::Data::fromSqlQuery<Class>(query, withExtras); } \
+    static inline QList<Class> fromSqlRecords(const QList<QSqlRecord> &records, bool withExtras = true) \
+    { return Systemus::Data::fromSqlRecords<Class>(records, withExtras); } \
+    static inline Class fromId(int id, bool withExtras = true) \
+    { return Systemus::Data::fromId<Class>(id, withExtras); } \
+    static inline Class fromSqlRecord(const QSqlRecord &record, bool withExtras = true) \
+    { return Systemus::Data::fromSqlRecord<Class>(record, withExtras); } \
 private:
 
 class QSqlField;
@@ -54,9 +54,15 @@ class SYSTEMUS_CORE_EXPORT Data
     Q_PROPERTY(int id READ id WRITE setId)
 
 public:
+    enum ExtraType {
+        PreExtra,
+        PostExtra
+    };
+
     Data();
-    Data(const Data &other);
     Data(const Data &other, bool adapt);
+    Data(const Data &other);
+    Data(Data &&other);
     virtual ~Data();
 
     Data &operator=(const Data &other);
@@ -85,19 +91,28 @@ public:
     //DataInfo dataInfo() const;
 
     Q_INVOKABLE bool get();
-    Q_INVOKABLE bool get(int id);
+    Q_INVOKABLE bool get(int id, bool withExtras = true);
     Q_INVOKABLE bool get(const QString &filter, bool withExtras = true);
-    virtual bool getData(const QString &filter);
-    virtual bool getExtras();
+
+    bool getData(const QString &filter);
+    virtual bool getExtras(ExtraType type = PostExtra);
 
     Q_INVOKABLE bool save();
-    virtual bool insert();
-    virtual bool update();
+
+    bool insert();
+    virtual bool insertExtras(ExtraType type);
+
+    bool update();
+    virtual bool updateExtras(ExtraType type);
 
     Q_INVOKABLE virtual bool deleteData();
+    virtual bool deleteExtras(ExtraType type);
 
     DataInfo dataInfo() const;
     QSqlError lastError() const;
+
+    bool isAdapted() const;
+    const Data *adaptedData() const;
 
     const void *internalData() const;
     void *internalData();
@@ -116,22 +131,22 @@ public:
     static int count(const QString &filter = QString(), QSqlError *error = nullptr);
 
     template<typename T>
-    static inline QList<T> all(QSqlError *error = nullptr);
+    static inline QList<T> all(bool withExtras = true, QSqlError *error = nullptr);
 
     template<typename T>
-    static QList<T> find(const DataSearch &query, QSqlError *error = nullptr);
+    static QList<T> find(const DataSearch &query, bool withExtras = true, QSqlError *error = nullptr);
 
     template<typename T>
-    static QList<T> fromSqlQuery(QSqlQuery &query);
+    static QList<T> fromSqlQuery(QSqlQuery &query, bool withExtras = true);
 
     template<typename T>
-    static QList<T> fromSqlRecords(const QList<QSqlRecord> &records);
+    static QList<T> fromSqlRecords(const QList<QSqlRecord> &records, bool withExtras = true);
 
     template<typename T>
-    static T fromId(int id);
+    static T fromId(int id, bool withExtras = true);
 
     template<typename T>
-    static T fromSqlRecord(const QSqlRecord &record);
+    static T fromSqlRecord(const QSqlRecord &record, bool withExtras = true);
 
     bool operator==(const Data &other) const;
     inline bool operator!=(const Data &other) const
@@ -167,9 +182,11 @@ private:
 
     void bindQueryValues(QSqlQuery &query) const;
 
+    friend class DataInfo;
+    friend class AbstractDataModel;
+
     friend class AdapterDataPrivate;
     friend class AbstractDataRelation;
-    friend class DataModel;
 
     friend class StandardUserInterface;
 };
@@ -210,7 +227,7 @@ protected:
     int _itemsPerPage;
 };
 
-typedef QList<Data>(FindDataFunction)(const DataSearch &query, QSqlError *error);
+typedef QList<Data>(FindDataFunction)(const DataSearch &, bool, QSqlError *);
 typedef void(DataTransferFunction)(const Data *from, Data *to, int type);
 typedef void(JsonGenerationFunction)(const Data &data, QJsonObject *object);
 
@@ -264,9 +281,11 @@ public:
     QSqlRecord secretRecord() const;
 
     QStringList fieldNames() const;
+    int fieldIndex(const QString &name) const;
     QString fieldName(int index) const;
     QSqlField field(int index) const;
     QStringList fieldPropertyNames() const;
+    int fieldPropertyIndex(const QString &name) const;
     QString fieldPropertyName(int index) const;
     QMetaProperty fieldProperty(int index) const;
     int count() const;
@@ -278,10 +297,10 @@ public:
 
     void dumpInfos();
 
-    Data *newData() const;
-    Data *newData(const QSqlRecord &record) const;
+    Data newData() const;
+    Data newData(const QSqlRecord &record) const;
 
-    QList<Data> find(const DataSearch &query, QSqlError *error) const;
+    QList<Data> find(const DataSearch &query, bool withExtras, QSqlError *error) const;
 
     const QMetaObject *metaObject() const;
 
@@ -307,12 +326,17 @@ public:
     static void registerTransferFunction(const QByteArray &className, const std::function<DataTransferFunction> &function);
     static void registerJsonGenerationFunction(const QByteArray &className, const std::function<JsonGenerationFunction> &function);
 
+    static QString propertyNameFromFieldName(const QString &fieldName);
+    static QString fieldNameFromPropertyName(const QString &propertyName);
     static QList<QSqlField> fieldsFromString(const QString &str, const QString &tableName, const QString &context);
 
 private:
     DataInfo(DataInfoPrivate *d);
 
     QSharedDataPointer<DataInfoPrivate> d_ptr;
+
+    friend class DataTableModel;
+    friend class TableView;
 };
 
 class SYSTEMUS_CORE_EXPORT DataRegistration
@@ -334,10 +358,14 @@ private:
 template<typename T>
 inline T Data::to() const
 {
-    T data;
-    data.setId(id());
-    data.fill(*this);
-    return data;
+    if (isAdapted() && dataClassName() == T::staticMetaObject.className())
+        return *static_cast<const T *>(adaptedData());
+    else {
+        T data;
+        data.setId(id());
+        data.fill(*this);
+        return data;
+    }
 }
 
 template<typename T>
@@ -358,11 +386,11 @@ int Data::count(const QString &filter, QSqlError *error)
 }
 
 template<typename T>
-QList<T> Data::all(QSqlError *error)
-{ return find<T>(DataSearch(QString(), 0, 0), error); }
+QList<T> Data::all(bool withExtras, QSqlError *error)
+{ return find<T>(DataSearch(QString(), 0, 0), withExtras, error); }
 
 template<typename T>
-QList<T> Data::find(const DataSearch &query, QSqlError *error)
+QList<T> Data::find(const DataSearch &query, bool withExtras, QSqlError *error)
 {
     QString statement = selectStatement(DataInfo::fromType<T>());
 
@@ -381,45 +409,45 @@ QList<T> Data::find(const DataSearch &query, QSqlError *error)
     bool ok;
     QSqlQuery qu = execQuery(statement, &ok, error);
     if (ok)
-        return fromSqlQuery<T>(qu);
+        return fromSqlQuery<T>(qu, withExtras);
     else
         return QList<T>();
 }
 
 template<typename T>
-QList<T> Data::fromSqlQuery(QSqlQuery &query)
+QList<T> Data::fromSqlQuery(QSqlQuery &query, bool withExtras)
 {
     QList<T> data;
     while (query.next())
-        data.append(fromSqlRecord<T>(query.record()));
+        data.append(fromSqlRecord<T>(query.record(), withExtras));
     return data;
 }
 
 template<typename T>
-QList<T> Data::fromSqlRecords(const QList<QSqlRecord> &records)
+QList<T> Data::fromSqlRecords(const QList<QSqlRecord> &records, bool withExtras)
 {
     QList<T> data;
     for (const QSqlRecord &record : records)
-        data.append(fromSqlRecord<T>(record));
+        data.append(fromSqlRecord<T>(record, withExtras));
     return data;
 }
 
 
 template<typename T>
-T Data::fromId(int id)
+T Data::fromId(int id, bool withExtras)
 {
     T data;
-    data.get(id);
+    data.get(id, withExtras);
     return data;
 }
 
 template<typename T>
-T Data::fromSqlRecord(const QSqlRecord &record)
+T Data::fromSqlRecord(const QSqlRecord &record, bool withExtras)
 {
     const DataInfo info = DataInfo::fromType<T>();
     T data;
     data.fill(record, true);
-    data.getExtras();
+    data.getExtras(PostExtra);
     return data;
 }
 
@@ -435,8 +463,8 @@ Systemus::DataRegistration sRegisterType(Systemus::DataInfo info)
 
     Systemus::DataInfo::registerInfo(className, info);
 
-    Systemus::DataInfo::registerFindFunction(className, [](const Systemus::DataSearch &query, QSqlError *error) {
-        const QList<T> found = Systemus::Data::find<T>(query, error);
+    Systemus::DataInfo::registerFindFunction(className, [](const Systemus::DataSearch &query, bool withExtras, QSqlError *error) {
+        const QList<T> found = Systemus::Data::find<T>(query, withExtras, error);
         QList<Systemus::Data> data;
         for (const T &f : found)
             data.append(f);

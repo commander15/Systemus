@@ -18,5 +18,8 @@
         <file>icons/password_show.png</file>
         <file>icons/search_go.png</file>
         <file>icons/search_icon.png</file>
+        <file>icons/systemus.png</file>
+        <file>icons/systemus_full.png</file>
+        <file>icons/systemus_mini.png</file>
     </qresource>
 </RCC>

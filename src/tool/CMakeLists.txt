@@ -6,6 +6,7 @@ target_sources(tool
     infoscommand.cpp
     res.qrc
     installcommand.h installcommand.cpp
+    installcommand.h installcommand.cpp
 )
 
 target_link_libraries(tool PRIVATE core)

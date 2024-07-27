@@ -29,16 +29,20 @@ public:
 
     System *q;
 
+    QByteArray logoData;
+
     QString name;
     QVersionNumber version;
+
     QDateTime now;
+    int nowTimerId;
 
     QSettings settings;
     QHash<QString, int> settingKeyIds;
     QStringList dirtySettingKeys;
-    QDateTime lastSettingsSyncTime;
 
-    QTimer timer;
+    int heartBeatInterval;
+    int heartBeatTimerId;
 
 private:
     enum SettingType {

@@ -43,6 +43,7 @@ public:
 
     virtual bool isValid() const = 0;
     virtual bool isEmpty() const = 0;
+    virtual bool isAdapted() const;
     virtual bool equals(const DataPrivate *other) const = 0;
     virtual void clear() = 0;
 
@@ -108,6 +109,8 @@ public:
     AdapterDataPrivate(const AdapterDataPrivate &other);
     ~AdapterDataPrivate();
 
+    const Data *adaptedData() const;
+
     void init() override;
 
     int id() const override;
@@ -115,6 +118,7 @@ public:
 
     bool isValid() const override;
     bool isEmpty() const override;
+    bool isAdapted() const override;
     bool equals(const DataPrivate *other) const override;
     void clear() override;
 

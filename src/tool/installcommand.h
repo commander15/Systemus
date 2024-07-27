@@ -8,9 +8,6 @@ class InstallCommand : public Command
 protected:
     void prepareCommand(QCommandLineParser *parser);
     int runCommand(const QCommandLineParser &parser);
-
-private:
-    int runScripts();
 };
 
 #endif // INSTALLCOMMAND_H

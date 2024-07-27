@@ -23,7 +23,8 @@ public:
     bool hasPermission(const QString &name) const;
     QList<Permission> permissions() const;
 
-    bool getExtras() override;
+    bool getExtras(ExtraType type) override;
+    bool insertExtras(ExtraType type) override;
 
 private:
     S_DATA(Privilege)
@@ -48,7 +49,9 @@ public:
     bool hasPermission(const QString &name) const;
     QList<Permission> permissions() const;
 
-    bool getExtras() override;
+    bool getExtras(ExtraType type) override;
+    bool insertExtras(ExtraType type) override;
+    bool updateExtras(ExtraType type) override;
 
 protected:
     PrivilegedData(PrivilegedDataPrivate *data);

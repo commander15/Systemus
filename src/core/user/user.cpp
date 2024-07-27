@@ -1,8 +1,12 @@
 #include "user.h"
 #include "user_p.h"
 
+#include <SystemusCore/system.h>
+
 #include <QtCore/qcryptographichash.h>
 #include <QtCore/qrandom.h>
+
+#include <bcrypt.h>
 
 namespace Systemus {
 
@@ -56,6 +60,12 @@ UserProfile User::profile() const
     return d->profile;
 }
 
+void User::setProfile(const UserProfile &profile)
+{
+    S_D(User);
+    d->profile = profile;
+}
+
 bool User::hasRole(const QString &name) const
 {
     S_D(const User);
@@ -66,6 +76,12 @@ Role User::role() const
 {
     S_D(const User);
     return d->role;
+}
+
+void User::setRole(const Role &role)
+{
+    S_D(User);
+    d->role = role;
 }
 
 bool User::inGroup(const QString &name) const
@@ -83,10 +99,44 @@ QList<Group> User::groups() const
     return d->groups;
 }
 
-bool User::getExtras()
+bool User::getExtras(ExtraType type)
+{
+    if (type == PostExtra) {
+        S_D(User);
+        return PrivilegedData::getExtras(type) && d->profile.get(this) && d->role.get(this) && d->groups.get(this);
+    } else
+        return PrivilegedData::getExtras(type);
+}
+
+bool User::insertExtras(ExtraType type)
 {
     S_D(User);
-    return PrivilegedData::getExtras() && d->profile.get(this) && d->role.get(this) && d->groups.get(this);
+    if (type == PreExtra) {
+        if (PrivilegedData::insertExtras(type) && d->profile.insert(this)) {
+            d->setProperty("profileId", d->profile->id());
+            d->setProperty("roleId", d->role->id());
+            return PrivilegedData::insertExtras(type);
+        } else
+            return false;
+    } else if (type == PostExtra) {
+        const QDateTime now = System::instance()->now();
+        for (int i(0); i < d->groups.size(); ++i) {
+            d->groups.setJunctionData("issueDate", i, now.date());
+            d->groups.setJunctionData("issueTime", i, now.time());
+        }
+        return PrivilegedData::insertExtras(type) && d->groups.insert(this);
+    }
+
+    return PrivilegedData::insertExtras(type);
+}
+
+bool User::updateExtras(ExtraType type)
+{
+    S_D(User);
+    if (type == PreExtra)
+        return PrivilegedData::updateExtras(type) && d->profile.update(this);
+
+    return PrivilegedData::updateExtras(type);
 }
 
 bool User::saveReadOnlyProperty(const QString &name, const QVariant &value)
@@ -150,17 +200,19 @@ QString UserProfile::fullName() const
 }
 
 UserPrivate::UserPrivate() :
-    PrivilegedDataPrivate("User", true),
+    PrivilegedDataPrivate("User"),
     groups("UserGroups", { "add_date", "add_time" })
 {
 }
 
+bool UserPrivate::checkPassword(const QString &input, const QString &password)
+{
+    return bcrypt::validatePassword(input.toStdString(), password.toStdString());
+}
+
 QString UserPrivate::encryptPassword(const QString &password)
 {
-    QByteArray hash = password.toUtf8();
-    for (int i = 0; i < 1000; ++i)
-        hash = QCryptographicHash::hash(hash, QCryptographicHash::Sha256);
-    return hash.toHex();
+    return QString::fromStdString(bcrypt::generateHash(password.toStdString(), 12));
 }
 
 bool UserPrivate::hasPrivilege(const QString &name) const
@@ -211,6 +263,11 @@ void UserPrivate::clear()
     PrivilegedDataPrivate::clear();
 }
 
+UserPrivate *UserPrivate::clone() const
+{
+    return new UserPrivate(*this);
+}
+
 bool UserProfilePrivate::equals(const DataPrivate *o) const
 {
     const UserProfilePrivate *other = static_cast<const UserProfilePrivate *>(o);
@@ -224,6 +281,11 @@ void UserProfilePrivate::clear()
     name.clear();
     firstName.clear();
     DefaultDataPrivate::clear();
+}
+
+UserProfilePrivate *UserProfilePrivate::clone() const
+{
+    return new UserProfilePrivate(*this);
 }
 
 }

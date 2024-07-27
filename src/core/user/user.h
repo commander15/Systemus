@@ -16,7 +16,7 @@ class SYSTEMUS_CORE_EXPORT User : public PrivilegedData
     Q_PROPERTY(QString password READ password WRITE setPassword)
     Q_PROPERTY(bool active READ isActive WRITE setActive)
     Q_PROPERTY(UserProfile profile READ profile STORED false)
-    Q_CLASSINFO("fields", "profile_id(int), role_id(int)")
+    Q_CLASSINFO("fields", "profileId(int), roleId(int)")
 
 public:
     User();
@@ -31,14 +31,18 @@ public:
     void setActive(bool active = true);
 
     UserProfile profile() const;
+    void setProfile(const UserProfile &profile);
 
     bool hasRole(const QString &name) const;
     Role role() const;
+    void setRole(const Role &role);
 
     bool inGroup(const QString &name) const;
     QList<Group> groups() const;
 
-    bool getExtras() override;
+    bool getExtras(ExtraType type) override;
+    bool insertExtras(ExtraType type) override;
+    bool updateExtras(ExtraType type) override;
 
     bool saveReadOnlyProperty(const QString &name, const QVariant &value) override;
 
