@@ -13,7 +13,7 @@ class SensitiveSample : public SampleData
 {
     Q_GADGET
     Q_PROPERTY(int riskLevel MEMBER riskLevel)
-    Q_CLASSINFO("fields", "ref_sample(int)")
+    Q_CLASSINFO("fields", "refSample(int)")
     Q_CLASSINFO("table", "SensitiveSamples")
     S_DATA(SensitiveSample)
 

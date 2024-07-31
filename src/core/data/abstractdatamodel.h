@@ -21,7 +21,12 @@ public:
     explicit AbstractDataModel(QObject *parent = nullptr);
     virtual ~AbstractDataModel();
 
+    template<typename T>
+    T item() const;
     Data item() const;
+
+    template<typename T>
+    T item(int row) const;
     Data item(int row) const;
 
     QByteArray className() const;
@@ -68,6 +73,14 @@ protected:
 
     friend class TableView;
 };
+
+template<typename T>
+inline T AbstractDataModel::item() const
+{ return item().to<T>(); }
+
+template<typename T>
+inline T AbstractDataModel::item(int row) const
+{ return item(row).to<T>(); }
 
 template<typename T>
 void AbstractDataModel::setClass()

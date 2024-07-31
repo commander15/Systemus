@@ -38,11 +38,28 @@ QList<Data> TableView::selectedData() const
 {
     QList<Data> data;
 
-    const QModelIndexList indexes = selectionModel()->selectedRows();
-    for (const QModelIndex &index : indexes)
-        data.append(model()->item(index.row()));
+    const QItemSelectionModel *model = selectionModel();
+    if (model) {
+        const QModelIndexList indexes = model->selectedRows();
+        for (const QModelIndex &index : indexes)
+            data.append(this->model()->item(index.row()));
+    }
 
     return data;
+}
+
+QList<int> TableView::selectedRows() const
+{
+    QList<int> rows;
+
+    const QItemSelectionModel *model = selectionModel();
+    if (model) {
+        const QModelIndexList indexes = model->selectedRows();
+        for (const QModelIndex &index : indexes)
+            rows.append(index.row());
+    }
+
+    return rows;
 }
 
 Data TableView::dataAt(const QPoint &pos) const
@@ -59,25 +76,12 @@ AbstractDataModel *TableView::model() const
     return static_cast<AbstractDataModel *>(QTableView::model());
 }
 
-void TableView::setModel(AbstractDataModel *model)
+void TableView::setModel(QAbstractItemModel *model)
 {
-    if (this->model()) {
-        disconnect(this->model(), &QAbstractItemModel::modelReset, this, &TableView::configureHeaders);
-    }
-
-    QTableView::setModel(model);
-
-    if (model) {
-        //configureHeaders();
-        connect(this->model(), &QAbstractItemModel::modelReset, this, &TableView::configureHeaders);
-    }
-}
-
-void TableView::configureHeaders()
-{
-    QHeaderView *header = horizontalHeader();
-    for (int i(0); i < header->count(); ++i)
-        header->setSectionResizeMode(i, QHeaderView::Stretch);
+    if (model->inherits("Systemus::AbstractDataModel"))
+        QTableView::setModel(model);
+    else
+        QTableView::setModel(nullptr);
 }
 
 void TableView::processDoubleClick(const QModelIndex &index)

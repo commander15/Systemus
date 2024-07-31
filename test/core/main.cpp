@@ -7,6 +7,17 @@
 
 #include <gtest/gtest.h>
 
+#include "sqlquerylist.h"
+
+static QtMessageHandler handler;
+void messageFilter(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    if (type == QtMsgType::QtInfoMsg && context.category == QStringLiteral("systemus.sql"))
+        SqlQueryList::add(msg);
+    else
+        handler(type, context, msg);
+}
+
 int main(int argc, char *argv[])
 {
     testing::InitGoogleTest(&argc, argv);
@@ -14,6 +25,8 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
 
     Systemus::init(argc, argv);
+
+    handler = qInstallMessageHandler(messageFilter);
 
     QLoggingCategory::setFilterRules("systemus.*.debug = true");
 

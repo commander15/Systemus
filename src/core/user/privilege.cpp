@@ -53,12 +53,6 @@ bool Privilege::insertExtras(ExtraType type)
 {
     S_D(Privilege);
     if (type == PostExtra) {
-        const QDateTime now = System::instance()->now();
-        for (int i(0); i < d->permissions.size(); ++i) {
-            d->permissions.setJunctionData("issueDate", i, now.date());
-            d->permissions.setJunctionData("issueTime", i, now.time());
-        }
-
         return AuthorizationData::insertExtras(type) && d->permissions.insert(this);
     }
 
@@ -132,18 +126,6 @@ bool PrivilegedData::insertExtras(ExtraType type)
 {
     S_D(PrivilegedData);
     if (type == PostExtra) {
-        const QDateTime now = System::instance()->now();
-
-        for (int i(0); i < d->privileges.size(); ++i) {
-            d->privileges.setJunctionData("issueDate", i, now.date());
-            d->privileges.setJunctionData("issueTime", i, now.time());
-        }
-
-        for (int i(0); i < d->permissions.size(); ++i) {
-            d->permissions.setJunctionData("issueDate", i, now.date());
-            d->permissions.setJunctionData("issueTime", i, now.time());
-        }
-
         return AuthorizationData::insertExtras(type) && d->privileges.insert(this) && d->permissions.insert(this);
     }
 
@@ -160,7 +142,7 @@ bool PrivilegedData::updateExtras(ExtraType type)
 }
 
 PrivilegePrivate::PrivilegePrivate() :
-    permissions("PrivilegePermissions", { "issue_date", "issue_time" })
+    permissions("PrivilegePermission")
 {
 }
 
@@ -187,8 +169,8 @@ void PrivilegePrivate::clear()
 }
 
 PrivilegedDataPrivate::PrivilegedDataPrivate(const QString &context) :
-    privileges(context + "Privileges", { "issue_date", "issue_time" }),
-    permissions(context + "Permissions", { "issue_date", "issue_time" })
+    privileges(context + "Privilege"),
+    permissions(context + "Permission")
 {
 }
 

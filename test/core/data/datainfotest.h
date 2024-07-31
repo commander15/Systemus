@@ -16,7 +16,7 @@ class SampleData : public Systemus::Data
     Q_PROPERTY(QString description MEMBER description)
     Q_PROPERTY(int count MEMBER sampleCount)
     Q_CLASSINFO("table", "Samples")
-    Q_CLASSINFO("fields", "secret_id(int, required)")
+    Q_CLASSINFO("fields", "secretId(int, required)")
     S_DATA(SampleData)
 
 public:

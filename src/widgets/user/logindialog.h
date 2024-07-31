@@ -31,6 +31,8 @@ public:
     Q_SLOT void done(int r) override;
 
 private:
+    Q_SLOT void togglePasswordVisibility();
+
     Q_SLOT void logIn();
     Q_SLOT void processError(const AuthenticationError &error);
     Q_SLOT void clearError();

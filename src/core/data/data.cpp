@@ -220,7 +220,7 @@ bool Data::getData(const QString &filter)
 {
     S_D(Data);
 
-    const QString request = selectStatement() + " WHERE " + filter + " LIMIT 1";
+    const QString request = selectStatement() + " WHERE " + DataSearch::formatExpression(filter) + " LIMIT 1";
     bool ok;
     QSqlQuery query = exec(request, &ok);
 
@@ -315,7 +315,7 @@ bool Data::deleteExtras(ExtraType type)
     return true;
 }
 
-DataInfo Data::dataInfo() const
+DataInfo Data::info() const
 {
     S_D(const Data);
     return d->dataInfo();
@@ -371,7 +371,6 @@ QSqlQuery Data::execQuery(const QString &query, bool *ok, QSqlError *error, bool
     if (qu.lastError().isValid()) {
         if (error)
             *error = qu.lastError();
-
         systemusSqlWarning() << qu.lastError().databaseText();
     }
 
@@ -391,6 +390,13 @@ bool Data::commitTransaction()
 bool Data::rollbackTransaction()
 {
     return QSqlDatabase::database().rollback();
+}
+
+QString Data::formatValue(const QVariant &value)
+{
+    QSqlField field(QString(), value.metaType());
+    field.setValue(value);
+    return driver()->formatValue(field);
 }
 
 QSqlDriver *Data::driver()
@@ -463,7 +469,7 @@ QString Data::insertStatement() const
     S_D(const Data);
     QSqlRecord record = toSqlRecord();
     record.remove(0);
-    return driver()->sqlStatement(QSqlDriver::InsertStatement, dataInfo().tableName(), toSqlRecord(), false);
+    return driver()->sqlStatement(QSqlDriver::InsertStatement, info().tableName(), toSqlRecord(), false);
 }
 
 QString Data::updateStatement() const
@@ -471,7 +477,7 @@ QString Data::updateStatement() const
     S_D(const Data);
     QSqlRecord record = toSqlRecord();
     record.remove(0);
-    return driver()->sqlStatement(QSqlDriver::UpdateStatement, dataInfo().tableName(), record, false);
+    return driver()->sqlStatement(QSqlDriver::UpdateStatement, info().tableName(), record, false);
 }
 
 QString Data::deleteStatement() const
@@ -493,12 +499,14 @@ DataSearch::DataSearch(const QString &filter, int page, int itemsPerPage) :
 
 void DataSearch::filter(const QString &filter)
 {
-    if (!filter.isEmpty()) _filters.append(filter);
+    if (!filter.isEmpty())
+        _filters.append(formatExpression(filter));
 }
 
 void DataSearch::group(const QString field)
 {
-    if (!field.isEmpty()) _groups.append(field);
+    if (!field.isEmpty())
+        _groups.append(formatExpression(field));
 }
 
 void DataSearch::sort(int field, Qt::SortOrder order)
@@ -512,7 +520,7 @@ void DataSearch::sort(int field, Qt::SortOrder order)
 void DataSearch::sort(const QString &field, Qt::SortOrder order)
 {
     if (!field.isEmpty()) {
-        _sortFields.append(field);
+        _sortFields.append(formatExpression(field));
         _sortOrders.append(order);
     }
 }
@@ -591,6 +599,21 @@ void DataSearch::clear()
     _sortOrders.clear();
     _page = 0;
     _itemsPerPage = 100;
+}
+
+QString DataSearch::formatExpression(const QString &filter) {
+    static QRegularExpression camelCasePattern(QStringLiteral("\\b[a-z]+(?:[A-Z][a-z]*)+\\b"));
+    QString result = filter;
+
+    QRegularExpressionMatchIterator i = camelCasePattern.globalMatch(filter);
+    while (i.hasNext()) {
+        const QRegularExpressionMatch match = i.next();
+        const QString property = match.captured();
+        const QString replacement = DataInfo::fieldNameFromPropertyName(property);
+        result.replace(match.capturedStart(), match.capturedLength(), replacement);
+    }
+
+    return result;
 }
 
 DataInfo::DataInfo(DataInfoPrivate *d) :
@@ -1015,6 +1038,11 @@ void DataInfo::registerJsonGenerationFunction(const QByteArray &className, const
     DataInfoPrivate::jsonGenerationFunctions.insert(className, function);
 }
 
+QString DataInfo::tableNameFromClassName(const QString &className)
+{
+    return DataInfoPrivate::tableNameFromClassName(className);
+}
+
 QString DataInfo::propertyNameFromFieldName(const QString &fieldName)
 {
     return DataInfoPrivate::propertyNameFromFieldName(fieldName);
@@ -1094,9 +1122,10 @@ QVariant DataPrivate::property(const QString &name, const Data *data) const
 
 bool DataPrivate::setProperty(const QString &name, const QVariant &value, Data *data)
 {
-    if (name == "id")
+    if (name == "id") {
         setId(value.toInt());
-    else if (hasDataProperty(name)) {
+        return true;
+    } else if (hasDataProperty(name)) {
         setDataProperty(name, value);
         return true;
     } else if (data) {
@@ -1149,6 +1178,11 @@ bool DataPrivate::isAdapted() const
 DataInfo DataPrivate::dataInfo() const
 {
     return DataInfoPrivate::registry.value(dataClassName());
+}
+
+DefaultDataPrivate::DefaultDataPrivate() :
+    _id(0)
+{
 }
 
 DefaultDataPrivate::~DefaultDataPrivate()

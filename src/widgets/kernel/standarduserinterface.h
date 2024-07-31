@@ -54,6 +54,7 @@ public:
 
     DataTableModel *dataModel() const;
     void setDataModel(const QByteArray &className);
+    void setDataModel(DataTableModel *model);
 
     QMenu *contextMenu() const;
 
@@ -81,6 +82,7 @@ protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
 
 private:
+    Q_SLOT void configureTableHeaders();
     Q_SLOT void processSelectionChange(const QItemSelection &current, const QItemSelection &last);
 
     Ui::StandardUserInterface *ui;

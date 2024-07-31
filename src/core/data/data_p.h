@@ -67,6 +67,7 @@ protected:
 class DefaultDataPrivate : public DataPrivate
 {
 public:
+    DefaultDataPrivate();
     virtual ~DefaultDataPrivate();
 
     void init() override;

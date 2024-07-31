@@ -36,6 +36,7 @@ public:
     bool currentActionSupported(int action) const;
     Q_SIGNAL void currentActionSupportUpdated(int action, bool supported);
 
+    Q_SIGNAL void interfaceRequested(int index);
     Q_SIGNAL void printRequested(UserInterface *origin, QTextDocument *document, const QPageLayout &layout);
 
     Q_SLOT void setCurrentIndex(int index) override;

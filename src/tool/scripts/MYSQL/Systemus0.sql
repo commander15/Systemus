@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS SystemNotifications (
 );
 
 CREATE TABLE IF NOT EXISTS SystemInstallations (
-    id      INTEGER     NOT NULL CHECK(id >= 0),
+    id      INTEGER     PRIMARY KEY AUTO_INCREMENT,
     version VARCHAR(10) NOT NULL,
+    code    INTEGER     NOT NULL CHECK(code >= 0),
     date    DATE        NOT NULL,
     time    TIME        NOT NULL
 );
@@ -196,10 +197,3 @@ CREATE TABLE IF NOT EXISTS PrivilegePermissions (
     FOREIGN KEY(privilege_id)  REFERENCES Privileges(id)  ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-/* Inserting System initial data */
-
-INSERT INTO Systems (name, version)
-VALUES ('Systemus', '1.0.0');
-
-INSERT INTO SystemInstallations(version, code, date, time)
-VALUES ('1.0.0', 0, CURRENT_DATE, CURRENT_TIME);

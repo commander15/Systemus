@@ -20,35 +20,44 @@ public:
     ~TableView();
 
     template<typename T>
-    T currentData() const
-    { return currentData().to<T>(); }
+    T currentData() const;
     Data currentData() const;
 
     template<typename T>
-    QList<T> selectedData() const
-    {
-        QList<T> data;
-        for (const Data &d : selectedData())
-            data.append(d.to<T>());
-        return data;
-    }
+    QList<T> selectedData() const;
     QList<Data> selectedData() const;
 
+    QList<int> selectedRows() const;
+
     template<typename T>
-    T dataAt(const QPoint &pos) const
-    { return dataAt(pos).to<T>(); }
+    T dataAt(const QPoint &pos) const;
     Data dataAt(const QPoint &pos) const;
 
     Q_SIGNAL void dataDoubleClicked(const Data &data);
 
     AbstractDataModel *model() const;
-    void setModel(AbstractDataModel *model);
+    void setModel(QAbstractItemModel *model);
 
 private:
-    Q_SLOT void configureHeaders();
-
     Q_SLOT void processDoubleClick(const QModelIndex &index);
 };
+
+template<typename T>
+T TableView::currentData() const
+{ return currentData().to<T>(); }
+
+template<typename T>
+QList<T> TableView::selectedData() const
+{
+    QList<T> data;
+    for (const Data &d : selectedData())
+        data.append(d.to<T>());
+    return data;
+}
+
+template<typename T>
+T TableView::dataAt(const QPoint &pos) const
+{ return dataAt(pos).to<T>(); }
 
 }
 

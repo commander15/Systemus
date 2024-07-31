@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     app.setApplicationName("Manager");
+    app.setOrganizationName("Systemus");
 
     QLocale::setDefault(QLocale(QLocale::English, QLocale::Cameroon));
 
@@ -30,7 +31,7 @@ int main(int argc, char *argv[])
     db.open();
 
     Systemus::System *system = Systemus::System::instance();
-    system->setHeartBeatInterval(60000);
+    system->setHeartbeatInterval(60000);
     system->sync();
 
     Systemus::LoginDialog login;

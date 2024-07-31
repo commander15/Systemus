@@ -115,15 +115,10 @@ bool User::insertExtras(ExtraType type)
         if (PrivilegedData::insertExtras(type) && d->profile.insert(this)) {
             d->setProperty("profileId", d->profile->id());
             d->setProperty("roleId", d->role->id());
-            return PrivilegedData::insertExtras(type);
+            return true;
         } else
             return false;
     } else if (type == PostExtra) {
-        const QDateTime now = System::instance()->now();
-        for (int i(0); i < d->groups.size(); ++i) {
-            d->groups.setJunctionData("issueDate", i, now.date());
-            d->groups.setJunctionData("issueTime", i, now.time());
-        }
         return PrivilegedData::insertExtras(type) && d->groups.insert(this);
     }
 
@@ -201,7 +196,7 @@ QString UserProfile::fullName() const
 
 UserPrivate::UserPrivate() :
     PrivilegedDataPrivate("User"),
-    groups("UserGroups", { "add_date", "add_time" })
+    groups("UserGroup")
 {
 }
 

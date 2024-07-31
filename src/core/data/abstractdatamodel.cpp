@@ -54,7 +54,7 @@ void AbstractDataModel::setClass(const Data &data)
 {
     S_D(AbstractDataModel);
     beginResetModel();
-    d->info = data.dataInfo();
+    d->info = data.info();
     d->items.clear();
     endResetModel();
 }
@@ -249,7 +249,9 @@ void AbstractDataModelPrivate::setSearchQuery(const QString &query)
         formatedQuery = Data::driver()->formatValue(field);
     }
 
-    if (multiSearch) {
+    if (query.contains('=')) {
+        _filters.append(formatExpression(query));
+    } else if (multiSearch) {
         // Searching using all search fields
 
         QStringList searchFilters;

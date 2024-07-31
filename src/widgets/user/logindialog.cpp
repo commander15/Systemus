@@ -19,9 +19,17 @@ LoginDialog::LoginDialog(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    System *system = System::instance();
+
+    QPixmap logoPixmap = QPixmap::fromImage(system->logo());
+    if (!logoPixmap.isNull())
+        ui->systemLogoOutput->setPixmap(logoPixmap.scaled(320, 80, Qt::KeepAspectRatio));
+
     ui->loginInput->addAction(ui->actionLogin, QLineEdit::LeadingPosition);
+
     ui->passwordInput->addAction(ui->actionPassword, QLineEdit::LeadingPosition);
     ui->passwordInput->addAction(ui->actionShowPassword, QLineEdit::TrailingPosition);
+    connect(ui->actionShowPassword, &QAction::triggered, this, &LoginDialog::togglePasswordVisibility);
 
     connect(ui->connectButton, &QAbstractButton::clicked, this, &LoginDialog::logIn);
     connect(ui->settingsButton, &QAbstractButton::toggled, this, &LoginDialog::toggleView);
@@ -90,6 +98,18 @@ void LoginDialog::done(int r)
     QDialog::done(r);
 }
 
+void LoginDialog::togglePasswordVisibility()
+{
+    bool hidden = (ui->passwordInput->echoMode() == QLineEdit::Password);
+    if (hidden) {
+        ui->passwordInput->setEchoMode(QLineEdit::Normal);
+        ui->actionShowPassword->setIcon(QIcon(":/systemus/icons/password_hide.png"));
+    } else {
+        ui->passwordInput->setEchoMode(QLineEdit::Password);
+        ui->actionShowPassword->setIcon(QIcon(":/systemus/icons/password_show.png"));
+    }
+}
+
 void LoginDialog::logIn()
 {
     Authenticator *auth = Authenticator::instance();
@@ -125,22 +145,23 @@ void LoginDialog::saveDatabaseSettings()
 void LoginDialog::testDatabaseConnection()
 {
     const QString connection = QStringLiteral("SYSTEMUS_TEST_CONNECTION");
-    QSqlDatabase db = QSqlDatabase::addDatabase(QSqlDatabase::database().driverName(), connection);
-    db.setHostName(ui->databaseHostInput->text());
-    db.setPort(ui->databasePortInput->value());
-    db.setUserName(ui->databaseUserInput->text());
-    db.setPassword(ui->databasePasswordInput->text());
-    db.setDatabaseName(ui->databaseNameInput->text());
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QSqlDatabase::database().driverName(), connection);
+        db.setHostName(ui->databaseHostInput->text());
+        db.setPort(ui->databasePortInput->value());
+        db.setUserName(ui->databaseUserInput->text());
+        db.setPassword(ui->databasePasswordInput->text());
+        db.setDatabaseName(ui->databaseNameInput->text());
 
-    if (db.open()) {
-        ui->databaseTestResultOutput->setText(tr("Connection succeded !"));
-        ui->databaseTestResultOutput->setStyleSheet("color: green");
-        db.close();
-    } else {
-        ui->databaseTestResultOutput->setText(tr("Connection failed !"));
-        ui->databaseTestResultOutput->setStyleSheet("color: red");
+        if (db.open()) {
+            ui->databaseTestResultOutput->setText(tr("Connection succeded !"));
+            ui->databaseTestResultOutput->setStyleSheet("color: green");
+            db.close();
+        } else {
+            ui->databaseTestResultOutput->setText(tr("Connection failed !"));
+            ui->databaseTestResultOutput->setStyleSheet("color: red");
+        }
     }
-
     QSqlDatabase::removeDatabase(connection);
 }
 

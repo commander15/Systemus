@@ -3,6 +3,9 @@
 #include "ui_standarduserinterface.h"
 
 #include <SystemusWidgets/dataedit.h>
+#include <SystemusWidgets/tableview.h>
+
+#include <SystemusCore/datamodel.h>
 
 #include <SystemusCore/authenticator.h>
 #include <SystemusCore/user.h>
@@ -41,13 +44,10 @@ StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *pare
     connect(ui->deleteButton, &QAbstractButton::clicked, this, &StandardUserInterface::deleteData);
     connect(ui->printButton, &QAbstractButton::clicked, this, &StandardUserInterface::printData);
 
-    ui->tableView->setModel(&d->model);
     connect(ui->tableView, &TableView::dataDoubleClicked, this, [this] {
         if (supportAction(ShowAction))
             showData();
     });
-
-    connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &StandardUserInterface::processSelectionChange);
 
     QString title = id;
     title[0] = title.at(0).toUpper();
@@ -63,14 +63,14 @@ void StandardUserInterface::search()
 {
     S_D(StandardUserInterface);
 
-    d->model.setSearchQuery(ui->searchInput->text());
-    d->model.select();
+    d->model->setSearchQuery(ui->searchInput->text());
+    d->model->select();
 }
 
 bool StandardUserInterface::refresh()
 {
     S_D(StandardUserInterface);
-    if (d->model.select()) {
+    if (d->model->select()) {
         processSelectionChange(QItemSelection(), QItemSelection());
         return true;
     } else {
@@ -157,11 +157,14 @@ void StandardUserInterface::deleteData()
 
 void StandardUserInterface::printData()
 {
+    S_D(StandardUserInterface);
     QTextDocument *doc = new QTextDocument(this);
 
-    const QList<Data> selectedData = ui->tableView->selectedData();
-    for (const Data &data : selectedData)
-        fillDocumentForPrinting(doc, data);
+    const QList<int> rows = ui->tableView->selectedRows();
+    for (int row : rows) {
+        d->model->selectRow(row);
+        fillDocumentForPrinting(doc, d->model->item(row));
+    }
 
     emit printingRequested(doc, documentPageLayout());
 }
@@ -174,13 +177,36 @@ TableView *StandardUserInterface::tableView() const
 DataTableModel *StandardUserInterface::dataModel() const
 {
     S_D(StandardUserInterface);
-    return &d->model;
+    return d->model;
 }
 
 void StandardUserInterface::setDataModel(const QByteArray &className)
 {
     S_D(StandardUserInterface);
-    d->model.setClass(className);
+
+    if (!d->model)
+        setDataModel(new DataTableModel(this));
+
+    d->model->setClass(className);
+}
+
+void StandardUserInterface::setDataModel(DataTableModel *model)
+{
+    S_D(StandardUserInterface);
+
+    if (d->model) {
+        disconnect(d->model, &QAbstractItemModel::modelReset, this, &StandardUserInterface::configureTableHeaders);
+        disconnect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &StandardUserInterface::processSelectionChange);
+    }
+
+    ui->tableView->setModel(model);
+    d->searchCompleter.setModel(model);
+    d->model = model;
+
+    if (d->model) {
+        connect(d->model, &QAbstractItemModel::modelReset, this, &StandardUserInterface::configureTableHeaders);
+        connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &StandardUserInterface::processSelectionChange);
+    }
 }
 
 QMenu *StandardUserInterface::contextMenu() const
@@ -259,7 +285,7 @@ bool StandardUserInterface::showDataContextMenu(const QList<Data> &data, QMenu *
 {
     S_D(StandardUserInterface);
 
-    bool single = data.size() == 1;
+    const bool single = data.size() == 1;
     d->showAction->setEnabled(supportAction(StandardUserInterface::ShowAction) && single);
     d->editAction->setEnabled(supportAction(StandardUserInterface::EditAction) && single);
     d->deleteAction->setEnabled(supportAction(StandardUserInterface::DeleteAction));
@@ -278,7 +304,7 @@ void StandardUserInterface::fillDocumentForPrinting(QTextDocument *document, con
 {
     S_D(StandardUserInterface);
 
-    const DataInfo info = data.dataInfo();
+    const DataInfo info = data.info();
 
     QTextCursor cursor(document);
 
@@ -316,8 +342,8 @@ void StandardUserInterface::fillDocumentForPrinting(QTextDocument *document, con
 void StandardUserInterface::initUi()
 {
     S_D(StandardUserInterface);
-    if (d->model.rowCount() == 0)
-        d->model.select();
+    if (d->model->rowCount() == 0)
+        d->model->select();
     processSelectionChange(QItemSelection(), QItemSelection());
 }
 
@@ -331,13 +357,17 @@ void StandardUserInterface::translateUi()
 
 QVariant StandardUserInterface::processAction(int action, const QVariantList &data)
 {
+    S_D(StandardUserInterface);
+
     switch (action) {
     case RefreshAction:
         return refresh();
 
     case SearchAction:
-        if (!data.isEmpty())
+        if (data.size() == 1)
             ui->searchInput->setText(data.constFirst().toString());
+        else if (data.size() == 2)
+            ui->searchInput->setText(data.constFirst().toString() + " = " + Data::formatValue(data.constLast()));
         search();
         break;
 
@@ -377,10 +407,16 @@ void StandardUserInterface::contextMenuEvent(QContextMenuEvent *event)
         if (showDataContextMenu(data, d->menu)) {
             d->menu->setTitle("Options");
             d->menu->popup(event->globalPos());
-            d->menu->update();
             event->accept();
         }
     }
+}
+
+void StandardUserInterface::configureTableHeaders()
+{
+    QHeaderView *view = ui->tableView->horizontalHeader();
+    for (int i(0); i < view->count(); ++i)
+        view->setSectionResizeMode(i, QHeaderView::Stretch);
 }
 
 void StandardUserInterface::processSelectionChange(const QItemSelection &current, const QItemSelection &last)
@@ -398,13 +434,18 @@ void StandardUserInterface::processSelectionChange(const QItemSelection &current
     d->editAction->setVisible(ui->editButton->isEnabled());
     d->deleteAction->setVisible(ui->deleteButton->isEnabled());
     d->printAction->setVisible(ui->printButton->isEnabled());
+
+    emit actionSupportUpdated(ShowAction, d->showAction->isVisible());
+    emit actionSupportUpdated(AddAction, ui->addButton->isEnabled());
+    emit actionSupportUpdated(EditAction, d->editAction->isVisible());
+    emit actionSupportUpdated(DeleteAction, d->deleteAction->isVisible());
 }
 
 StandardUserInterfacePrivate::StandardUserInterfacePrivate(const QByteArray &id, StandardUserInterface *q) :
     UserInterfacePrivate(id, q),
-    editDialog(nullptr)
+    editDialog(nullptr),
+    model(nullptr)
 {
-    searchCompleter.setModel(&model);
 }
 
 void StandardUserInterfacePrivate::refreshUi()

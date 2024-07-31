@@ -109,7 +109,12 @@ void InterfaceServer::processPrintRequest(QTextDocument *document, const QPageLa
 void InterfaceServer::processServerAction(int action, const QVariantList &data)
 {
     if (action == ShowInterfaceAction) {
-        setCurrentIndex(data.constFirst().toInt());
+        for (int i(0); i < count(); ++i) {
+            if (interface(i)->interfaceId() == data.constFirst()) {
+                emit interfaceRequested(i);
+                break;
+            }
+        }
     }
 }
 

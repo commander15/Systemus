@@ -7,8 +7,7 @@
 namespace Systemus {
 
 UserEdit::UserEdit(QWidget *parent) :
-    ui(new Ui::UserEdit),
-    _roleModel(nullptr)
+    ui(new Ui::UserEdit)
 {
     ui->setupUi(this);
 }
@@ -47,9 +46,8 @@ Data UserEdit::extractFields() const
         user.setPassword(ui->passwordInput->text(), true);
 
     AbstractDataModel *roleModel = this->roleModel();
-    if (roleModel) {
-        // Setting role !
-    }
+    if (roleModel)
+        user.setRole(roleModel->item(ui->roleInput->currentIndex()).to<Role>());
 
     user.setActive(ui->activeYesInput->isChecked());
 
@@ -70,7 +68,7 @@ void UserEdit::fillFields(const Data &data)
     AbstractDataModel *roleModel = this->roleModel();
     if (roleModel) {
         for (int i(0); i < roleModel->rowCount(); ++i) {
-            if (user.hasRole(roleModel->item(i).to<Role>().name())) {
+            if (user.property("roleId") == roleModel->item(i).id()) {
                 ui->roleInput->setCurrentIndex(i);
                 break;
             }

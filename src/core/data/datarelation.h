@@ -257,7 +257,6 @@ protected:
         return this->generateSelectStatement(foreignInfo.tableName(), foreignInfo.record(), filter);
     }
 
-private:
     ForeignData _data;
 };
 
@@ -289,6 +288,57 @@ public:
 protected:
     void saveData(const ForeignData &data) override
     { QList<ForeignData>::append(data); }
+
+    bool insertAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    { return updateAllData(primary, foreignProperty, indexProperty); }
+
+    bool updateAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        const DataInfo info = primary->info();
+
+        QString idPropertyName;
+        if (!foreignProperty.isEmpty())
+            idPropertyName = foreignProperty;
+        else
+            idPropertyName = info.idPropertyName();
+
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = info.foreignPropertyName();
+
+        for (ForeignData &data : *this) {
+            data.setProperty(indexPropertyName, primary->property(idPropertyName));
+            if (!data.save())
+                return false;
+        }
+        return true;
+    }
+
+    bool deleteAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
+    {
+        const DataInfo info = primary->info();
+
+        QString idPropertyName;
+        if (!foreignProperty.isEmpty())
+            idPropertyName = foreignProperty;
+        else
+            idPropertyName = info.idPropertyName();
+
+        QString indexPropertyName;
+        if (!indexProperty.isEmpty())
+            indexPropertyName = indexProperty;
+        else
+            indexPropertyName = info.foreignPropertyName();
+
+        QString filter = QStringLiteral("%1 = %2").arg(indexPropertyName).arg(this->formatedPropertyValue(idPropertyName, *primary));
+        QString statement = this->generateDeleteStatement(this->foreignInfo().tableName(), filter);
+
+        bool ok;
+        this->exec(statement, &ok);
+        return ok;
+    }
 };
 
 // One To One Relationship
@@ -317,60 +367,9 @@ public:
     { return DataRelation<ForeignData>::OneToManyRelationship; }
 
 protected:
-    bool insertAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
-    { return updateAllData(primary, foreignProperty, indexProperty); }
-
-    bool updateAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
-    {
-        const DataInfo info = primary->dataInfo();
-
-        QString idPropertyName;
-        if (!foreignProperty.isEmpty())
-            idPropertyName = foreignProperty;
-        else
-            idPropertyName = info.idPropertyName();
-
-        QString indexPropertyName;
-        if (!indexProperty.isEmpty())
-            indexPropertyName = indexProperty;
-        else
-            indexPropertyName = info.foreignPropertyName();
-
-        for (ForeignData &data : *this) {
-            data.setProperty(indexPropertyName, primary->property(idPropertyName));
-            if (!data.save())
-                return false;
-        }
-        return true;
-    }
-
-    bool deleteAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
-    {
-        const DataInfo info = primary->dataInfo();
-
-        QString idPropertyName;
-        if (!foreignProperty.isEmpty())
-            idPropertyName = foreignProperty;
-        else
-            idPropertyName = info.idPropertyName();
-
-        QString indexPropertyName;
-        if (!indexProperty.isEmpty())
-            indexPropertyName = indexProperty;
-        else
-            indexPropertyName = info.foreignPropertyName();
-
-        QString filter = QStringLiteral("%1 = %2").arg(indexPropertyName).arg(this->formatedPropertyValue(idPropertyName, *primary));
-        QString statement = this->generateDeleteStatement(this->foreignInfo().tableName(), filter);
-
-        bool ok;
-        this->exec(statement, &ok);
-        return ok;
-    }
-
     QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const override
     {
-        const DataInfo info = primary.dataInfo();
+        const DataInfo info = primary.info();
 
         QString indexPropertyName;
         if (!indexProperty.isEmpty())
@@ -403,6 +402,12 @@ template<typename ForeignData>
 class SYSTEMUS_CORE_EXPORT ManyToOneRelation : public SingleRelation<ForeignData>
 {
 public:
+    ForeignData &operator=(const ForeignData &other)
+    { return SingleRelation<ForeignData>::operator=(other); }
+
+    ManyToOneRelation<ForeignData> &operator=(const ManyToOneRelation<ForeignData> &other)
+    { SingleRelation<ForeignData>::operator=(other); return *this; }
+
     int relationshipType() const override
     { return DataRelation<ForeignData>::ManyToOneRelationship; }
 };
@@ -415,173 +420,26 @@ class SYSTEMUS_CORE_EXPORT ManyToManyRelation : public MultiRelation<ForeignData
 public:
     ManyToManyRelation() = default;
 
-    ManyToManyRelation(const QStringList &fields) :
-        ManyToManyRelation(QString(), fields)
+    ManyToManyRelation(const QString &className) :
+        _className(className)
     {}
 
-    ManyToManyRelation(const QString &table, const QStringList &properties) :
-        _junctionTable(table)
-    {
-        _junctionProperties.append(QPair<QString, QMetaType>("id", QMetaType::fromName("int")));
-
-        const QList<QSqlField> fields = DataInfo::fieldsFromString(properties.join(','), table, "ManyToManyRelation");
-        for (const QSqlField &field : fields) {
-            const QString propertyName = DataInfo::propertyNameFromFieldName(field.name());
-            _junctionProperties.append(QPair<QString, QMetaType>(propertyName, field.metaType()));
-        }
-
-        QPair<QString, QMetaType> foreignProperty(DataInfo::fromType<ForeignData>().foreignPropertyName(), QMetaType::fromName("QString"));
-        _junctionProperties.append(foreignProperty);
-    }
-
     ManyToManyRelation(const ManyToManyRelation<ForeignData> &data) = default;
-
-    int junctionId(int index) const
-    { return _junctionData.at(index).value("id").toInt(); }
-
-    void setJunctionId(int index, int id)
-    { _junctionData[index].insert("id", id); }
-
-    QVariant junctionData(const QString &property, int index) const
-    { return _junctionData.at(index).value(property); }
-
-    void setJunctionData(const QString &property, int index, const QVariant &value)
-    { _junctionData[index].insert(property, value); }
-
-    QVariantHash junctionData(int index) const
-    { return _junctionData.at(index); }
-
-    void setJunctionData(int index, const QVariantHash &data)
-    { _junctionData.replace(index, data); }
-
-    bool saveJunctionData(int index)
-    {
-        if (!_junctionData.at(index).contains("id"))
-            return this->insertJunctionData(index);
-        else
-            return this->updateJunctionData(index);
-    }
-
-    int insertJunctionData(int index)
-    {
-        QString statement = this->generateInsertStatement(this->junctionTable(), this->junctionRecord(index));
-        bool ok;
-        QSqlQuery query = this->exec(statement, &ok);
-
-        if (ok) {
-            _junctionData[index].insert("id", query.lastInsertId());
-            return true;
-        } else
-            return false;
-    }
-
-    bool updateJunctionData(int index)
-    {
-        const QString filter = "id = " + _junctionData.at(index).value("id").toInt();
-        QString statement = this->generateUpdateStatement(this->junctionTable(), this->junctionRecord(index), filter);
-
-        bool ok;
-        this->exec(statement, &ok);
-        return ok;
-    }
-
-    bool deleteJunctionData(int index)
-    {
-        bool ok = true;
-
-        if (_junctionData.at(index).contains("id")) {
-            const QString filter = QStringLiteral("id = %1").arg(_junctionData.at(index).value("id").toInt());
-            this->exec(this->generateDeleteStatement(this->junctionTable(), filter), &ok);
-        }
-
-        if (ok) {
-            this->removeAt(index);
-            return true;
-        } else
-            return false;
-    }
-
-    QSqlRecord junctionRecord(int index) const
-    {
-        QSqlRecord record = junctionRecord();
-        for (const QPair<QString, QMetaType> &property : _junctionProperties) {
-            const QString &propertyName = property.first;
-            record.setValue(DataInfo::fieldNameFromPropertyName(propertyName), _junctionData.at(index).value(propertyName));
-        }
-        return record;
-    }
-
-    void clear() override
-    { _junctionData.clear(); MultiRelation<ForeignData>::clear(); }
 
     int relationshipType() const override
     { return DataRelation<ForeignData>::ManyToManyRelationship; }
 
 protected:
-    ForeignData dataFromRecord(const QSqlRecord &record) override
-    {
-        QVariantHash data;
-        for (const QPair<QString, QMetaType> &property : _junctionProperties) {
-            const QString fieldName = DataInfo::fieldNameFromPropertyName(property.first);
-            data.insert(property.first, record.value(fieldName));
-        }
-        _junctionData.append(data);
-        return MultiRelation<ForeignData>::dataFromRecord(record);
-    }
-
-    bool insertAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
-    { return updateAllData(primary, foreignProperty, indexProperty); }
-
-    bool updateAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
-    {
-        QString foreignPropertyName;
-        if (!foreignProperty.isEmpty())
-            foreignPropertyName = foreignPropertyName;
-        else
-            foreignPropertyName = primary->dataInfo().foreignPropertyName();
-
-        QString indexPropertyName;
-        if (!indexProperty.isEmpty())
-            indexPropertyName = indexProperty;
-        else
-            indexPropertyName = this->foreignInfo().foreignPropertyName();
-
-        QSqlRecord record = this->junctionRecord();
-
-        for (int i(0); i < this->size(); ++i) {
-            Data *data = &(*this)[i];
-            if (!data->save() || this->saveJunctionData(i))
-                return false;
-        }
-        return true;
-    }
-
-    bool deleteAllData(Data *primary, const QString &foreignProperty, const QString &indexProperty) override
-    {
-        Q_UNUSED(primary);
-        Q_UNUSED(foreignProperty);
-        Q_UNUSED(indexProperty);
-
-        for (int i(0); i < this->size(); ++i)
-            if (!this->deleteJunctionData(i))
-                return false;
-        return true;
-    }
-
     QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const override
     {
-        const DataInfo info = primary.dataInfo();
+        const DataInfo info = primary.info();
         const DataInfo foreignInfo = this->foreignInfo();
 
-        QString indexPropertyName;
-        QString primaryFieldName;
-        if (!indexProperty.isEmpty()) {
-            indexPropertyName = indexProperty;
-            primaryFieldName = DataInfo::fieldNameFromPropertyName(indexProperty);
-        } else {
-            indexPropertyName = info.foreignPropertyName();
-            primaryFieldName = info.foreignFieldName();
-        }
+        QString tableName;
+        if (!_className.isEmpty())
+            tableName = DataInfo::tableNameFromClassName(_className);
+        else
+            tableName = info.tableName().chopped(1) + foreignInfo.tableName();
 
         QString foreignPropertyName;
         QString foreignFieldName;
@@ -589,54 +447,36 @@ protected:
             foreignPropertyName = foreignProperty;
             foreignFieldName = DataInfo::fieldNameFromPropertyName(foreignProperty);
         } else {
-            foreignPropertyName = foreignInfo.foreignPropertyName();
-            foreignFieldName = foreignInfo.foreignFieldName();
+            foreignPropertyName = info.foreignPropertyName();
+            foreignFieldName = info.foreignFieldName();
         }
 
-        QSqlRecord record = this->junctionRecord();
+        QString indexPropertyName;
+        QString indexFieldName;
+        if (!indexProperty.isEmpty()) {
+            indexPropertyName = indexProperty;
+            indexFieldName = DataInfo::fieldNameFromPropertyName(indexProperty);
+        } else {
+            indexPropertyName = foreignInfo.foreignPropertyName();
+            indexFieldName = foreignInfo.foreignFieldName();
+        }
+
+        QSqlRecord record = foreignInfo.record();
         {
             QSqlField idField;
-
             idField = record.field(0);
-            idField.setName(this->junctionTable(primary) + ".id");
+            idField.setName(foreignInfo.tableName() + ".id");
             record.replace(0, idField);
-
-            QSqlRecord foreignRecord = foreignInfo.record();
-
-            idField = foreignRecord.field(0);
-            idField.setName(this->junctionTable(primary) + ".id");
-            foreignRecord.replace(0, idField);
-
-            for (int i(0); i < foreignRecord.count(); ++i)
-                record.append(foreignRecord.field(i));
         }
 
-        QString join = QStringLiteral("%1 ON %1.%2 = %3.%4").arg(foreignInfo.tableName(), foreignInfo.idFieldName(), this->junctionTable(primary), foreignFieldName);
-        QString filter = QStringLiteral("%1 = %2").arg(primaryFieldName).arg(primary.id());
-        QString statement = this->generateSelectStatement(_junctionTable, record, QString());
-        return statement + (false ? " INNER JOIN " : " LEFT JOIN ") + join + " WHERE " + filter;
+        QString join = QStringLiteral("%1 ON %1.%2 = %3.%4").arg(tableName, indexFieldName, foreignInfo.tableName(), foreignInfo.idFieldName());
+        QString filter = QStringLiteral("%1 = %2").arg(foreignFieldName).arg(primary.id());
+        QString statement = this->generateSelectStatement(foreignInfo.tableName(), record, QString());
+        return statement + (true ? " INNER JOIN " : " LEFT JOIN ") + join + " WHERE " + filter;
     }
 
 private:
-    QString junctionTable(const Data &primary = Data()) const
-    {
-        if (!_junctionTable.isEmpty())
-            return _junctionTable;
-        else
-            return primary.dataInfo().tableName().chopped(1) + this->foreignInfo().tableName();
-    }
-
-    QSqlRecord junctionRecord() const
-    {
-        QSqlRecord record;
-        for (const QPair<QString, QMetaType> &property : _junctionProperties)
-            record.append(QSqlField(DataInfo::fieldNameFromPropertyName(property.first), property.second));
-        return record;
-    }
-
-    QString _junctionTable;
-    QList<QPair<QString, QMetaType>> _junctionProperties;
-    QList<QVariantHash> _junctionData;
+    QString _className;
 };
 
 }

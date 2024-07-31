@@ -9,6 +9,7 @@
 #include <QtSql/qsqldriver.h>
 
 #include <QtCore/qstandardpaths.h>
+#include <QtCore/qdir.h>
 #include <QtCore/qfile.h>
 
 namespace Systemus {
@@ -30,48 +31,37 @@ System::System(QObject *parent) :
     _s_register_internal_types();
 
     d->nowTimerId = startTimer(1000);
-    d->heartBeatTimerId = startTimer(d->heartBeatInterval);
-}
-
-bool System::isLogoAvailable() const
-{
-    return !d->logoData.isEmpty();
-}
-
-QString System::logoFileName() const
-{
-    QString path = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/Systemus";
-    return path + "/" + d->name + ".png";
-}
-
-QByteArray System::logoData()
-{
-    if (!d->logoData.isEmpty())
-        return d->logoData;
-
-    QFile file(logoFileName());
-    const QString logoFile = logoFileName();
-    if (file.exists() && file.open(QIODevice::ReadOnly)) {
-        d->logoData = file.readAll();
-    } else {
-        bool ok;
-        QSqlQuery query = Data::execQuery("SELECT logo FROM Systems LIMIT 1", &ok);
-
-        if (ok && query.next()) {
-            d->logoData = query.value(0).toByteArray();
-            if (file.open(QIODevice::WriteOnly)) {
-                file.write(d->logoData);
-                file.flush();
-                file.close();
-            }
-        }
-    }
-
-    return d->logoData;
+    d->heartbeatTimerId = startTimer(d->heartbeatInterval);
 }
 
 System::~System()
 {
+}
+
+QByteArray System::logoData() const
+{
+    QByteArray data;
+
+    QFile file(d->dir + QStringLiteral("/system/logo.png"));
+    if (file.exists() && file.fileTime(QFileDevice::FileModificationTime).secsTo(d->now) < 1 * 60 * 60) {
+        if (file.open(QIODevice::ReadOnly)) {
+            data = file.readAll();
+            file.close();
+        }
+    } else {
+        bool ok;
+        QSqlQuery query = Data::execQuery(QStringLiteral("SELECT logo FROM Systems LIMIT 1"), &ok);
+        if (ok && query.next())
+            data = query.value(0).toByteArray();
+
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(data);
+            file.flush();
+            file.close();
+        }
+    }
+
+    return data;
 }
 
 QString System::name() const
@@ -82,6 +72,11 @@ QString System::name() const
 QVersionNumber System::version() const
 {
     return d->version;
+}
+
+QString System::versionString() const
+{
+    return d->version.toString();
 }
 
 QDate System::currentDate() const
@@ -131,20 +126,20 @@ bool System::isOnline() const
     return d->isOnline();
 }
 
-int System::heartBeatInterval() const
+int System::heartbeatInterval() const
 {
-    return d->heartBeatInterval;
+    return d->heartbeatInterval;
 }
 
-void System::setHeartBeatInterval(int interval)
+void System::setHeartbeatInterval(int interval)
 {
     if (interval <= 0)
         interval = 60000;
 
-    if (d->heartBeatInterval != interval) {
-        killTimer(d->heartBeatTimerId);
-        d->heartBeatTimerId = startTimer(interval);
-        d->heartBeatInterval = interval;
+    if (d->heartbeatInterval != interval) {
+        killTimer(d->heartbeatTimerId);
+        d->heartbeatTimerId = startTimer(interval);
+        d->heartbeatInterval = interval;
     }
 }
 
@@ -168,7 +163,7 @@ void System::timerEvent(QTimerEvent *event)
     if (event->timerId() == d->nowTimerId) {
         d->now = d->now.addSecs(1);
         event->accept();
-    } else if (event->timerId() == d->heartBeatTimerId) {
+    } else if (event->timerId() == d->heartbeatTimerId) {
         sync();
         event->accept();
     } else {
@@ -187,17 +182,22 @@ SystemPrivate::SystemPrivate(System *q) :
     q(q),
     now(QDateTime::currentDateTime()),
     nowTimerId(-1),
+    dir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/Systemus"),
 #ifdef QT_DEBUG
-    settings("systemus.ini", QSettings::IniFormat),
+    settings(dir + QStringLiteral("/system/systemus.ini"), QSettings::IniFormat),
 #endif
-    heartBeatInterval(60000),
-    heartBeatTimerId(-1),
+    heartbeatInterval(60000),
+    heartbeatTimerId(-1),
     _online(false)
 {
     settings.beginGroup("System");
     name = settings.value("name").toString();
     version = QVersionNumber::fromString(settings.value("version").toString());
     settings.endGroup();
+
+    QDir systemusDir(dir);
+    if (!systemusDir.exists("system"))
+        systemusDir.mkpath("system");
 
     QTimer::singleShot(0, this, [=] { setOnline(!name.isEmpty()); });
 }
@@ -281,25 +281,34 @@ bool SystemPrivate::syncSettings(bool force)
 
             QString statement;
 
-            // Bug: saves data with string type only (30)
+            // Bug: saves data with string type only (40)
 
-            if (!settingKeyIds.contains(name)) {
-                statement = Data::driver()->sqlStatement(QSqlDriver::InsertStatement, table, record, false);
-                QSqlQuery query = Data::execQuery(statement, &ok);
+            if (settingKeyIds.contains(settingKey(name))) {
+                if (!settingKeyIds.contains(name)) {
+                    statement = Data::driver()->sqlStatement(QSqlDriver::InsertStatement, table, record, false);
+                    QSqlQuery query = Data::execQuery(statement, &ok);
 
-                if (ok)
-                    settingKeyIds.insert(name, query.lastInsertId().toInt());
+                    if (ok)
+                        settingKeyIds.insert(name, query.lastInsertId().toInt());
+                } else {
+                    statement = Data::driver()->sqlStatement(QSqlDriver::UpdateStatement, table, record, false);
+                    statement.append(" WHERE id = " + QString::number(settingKeyIds.value(name)));
+                    Data::execQuery(statement, &ok);
+                }
             } else {
-                statement = Data::driver()->sqlStatement(QSqlDriver::UpdateStatement, table, record, false);
-                statement.append(" WHERE id = " + QString::number(settingKeyIds.value(name)));
-                Data::execQuery(statement, &ok);
+                int id = settingKeyIds.value(name, 0);
+                if (id > 0) {
+                    statement = Data::driver()->sqlStatement(QSqlDriver::DeleteStatement, table, QSqlRecord(), false);
+                    statement.append(" WHERE id = " + QString::number(id));
+                    Data::execQuery(statement, &ok);
+                }
             }
-
-            if (!ok)
-                Data::rollbackTransaction();
         }
 
-        Data::commitTransaction();
+        if (ok)
+            Data::commitTransaction();
+        else
+            Data::rollbackTransaction();
         dirtySettingKeys.clear();
     }
 

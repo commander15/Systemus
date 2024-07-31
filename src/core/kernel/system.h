@@ -20,6 +20,12 @@ class SystemPrivate;
 class SYSTEMUS_CORE_EXPORT System : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(QByteArray logoData READ logoData NOTIFY online)
+    Q_PROPERTY(QString name READ name NOTIFY online)
+    Q_PROPERTY(QString version READ versionString NOTIFY online)
+    Q_PROPERTY(QDateTime now READ now)
+    Q_PROPERTY(bool online READ isOnline NOTIFY onlineStateChanged)
+    Q_PROPERTY(int heartbeatInterval READ heartbeatInterval WRITE setHeartbeatInterval)
 
 public:
     ~System();
@@ -27,8 +33,12 @@ public:
 #ifdef QT_GUI_LIB
     inline QImage logo() const;
 #endif
+    QByteArray logoData() const;
+
     QString name() const;
+
     QVersionNumber version() const;
+    QString versionString() const;
 
     QDate currentDate() const;
     QTime currentTime() const;
@@ -38,6 +48,7 @@ public:
     QVariant setting(const QString &name) const;
     QVariant setting(const QString &name, const QVariant &defaultValue) const;
     void setSetting(const QString &name, const QVariant &value);
+    //void unsetSettings(const QString &name);
 
     User user() const;
     Q_SIGNAL void userChanged(const User &user);
@@ -47,8 +58,8 @@ public:
     Q_SIGNAL void offline();
     Q_SIGNAL void onlineStateChanged(bool online);
 
-    int heartBeatInterval() const;
-    void setHeartBeatInterval(int interval);
+    int heartbeatInterval() const;
+    void setHeartbeatInterval(int interval);
 
     Q_SLOT void sync();
     Q_SIGNAL void notify();
@@ -62,10 +73,6 @@ protected:
 
 private:
     System(QObject *parent = nullptr);
-
-    bool isLogoAvailable() const;
-    QString logoFileName() const;
-    QByteArray logoData();
 
     Q_SLOT void setUser(const User &user);
 
@@ -90,16 +97,7 @@ public:
 #ifdef QT_GUI_LIB
 
 QImage System::logo() const
-{
-    QImage image;
-    if (isLogoAvailable()) {
-        image.load(logoFileName());
-    } else {
-        image.loadFromData(_instance->logoData(), "PNG");
-        image.save(logoFileName(), "PNG");
-    }
-    return image;
-}
+{ return QImage::fromData(logoData(), "PNG"); }
 
 #endif
 

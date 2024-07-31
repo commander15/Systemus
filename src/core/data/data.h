@@ -108,7 +108,7 @@ public:
     Q_INVOKABLE virtual bool deleteData();
     virtual bool deleteExtras(ExtraType type);
 
-    DataInfo dataInfo() const;
+    DataInfo info() const;
     QSqlError lastError() const;
 
     bool isAdapted() const;
@@ -125,6 +125,7 @@ public:
     static bool rollbackTransaction();
 
     //static QString selectStatement(const QString &table, const QSqlRecord &record, const QList<QSqlRelation> &relations);
+    static QString formatValue(const QVariant &value);
     static QSqlDriver *driver();
 
     template<typename T>
@@ -217,6 +218,8 @@ public:
     QString limitOffsetClause() const;
 
     void clear();
+
+    static QString formatExpression(const QString &filter);
 
 protected:
     QStringList _filters;
@@ -326,6 +329,7 @@ public:
     static void registerTransferFunction(const QByteArray &className, const std::function<DataTransferFunction> &function);
     static void registerJsonGenerationFunction(const QByteArray &className, const std::function<JsonGenerationFunction> &function);
 
+    static QString tableNameFromClassName(const QString &className);
     static QString propertyNameFromFieldName(const QString &fieldName);
     static QString fieldNameFromPropertyName(const QString &propertyName);
     static QList<QSqlField> fieldsFromString(const QString &str, const QString &tableName, const QString &context);
@@ -375,7 +379,7 @@ int Data::count(const QString &filter, QSqlError *error)
     QString statement = "SELECT COUNT(" + info.idFieldName() + ") FROM " + info.tableName();
 
     if (!filter.isEmpty())
-        statement.append(" WHERE " + filter);
+        statement.append(" WHERE " + DataSearch::formatExpression(filter));
 
     bool ok;
     QSqlQuery qu = execQuery(statement, &ok, error);

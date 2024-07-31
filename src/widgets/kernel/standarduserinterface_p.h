@@ -3,9 +3,6 @@
 
 #include <SystemusWidgets/standarduserinterface.h>
 #include <SystemusWidgets/private/userinterface_p.h>
-#include <SystemusWidgets/tableview.h>
-
-#include <SystemusCore/datamodel.h>
 
 #include <QtWidgets/qcompleter.h>
 #include <QtWidgets/qmenu.h>
@@ -38,7 +35,7 @@ public:
     QAction *deleteAction;
     QAction *printAction;
 
-    DataTableModel model;
+    DataTableModel *model;
 };
 
 }

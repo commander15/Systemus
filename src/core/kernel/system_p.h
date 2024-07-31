@@ -37,12 +37,14 @@ public:
     QDateTime now;
     int nowTimerId;
 
+    QString dir;
+
     QSettings settings;
     QHash<QString, int> settingKeyIds;
     QStringList dirtySettingKeys;
 
-    int heartBeatInterval;
-    int heartBeatTimerId;
+    int heartbeatInterval;
+    int heartbeatTimerId;
 
 private:
     enum SettingType {

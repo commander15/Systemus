@@ -31,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     Systemus::StandardUserInterface *i;
 
     i = new Systemus::StandardUserInterface("user", this);
-    i->dataModel()->setClass("Systemus::User");
+    i->setDataModel("Systemus::User");
     i->dataModel()->setProperties({ "name", "active", "creationDate", "creationTime" });
     i->dataModel()->setHeaderData(0, Qt::Horizontal, tr("Name"));
     i->dataModel()->setHeaderData(1, Qt::Horizontal, tr("Active"));
@@ -44,24 +44,24 @@ MainWindow::MainWindow(QWidget *parent)
     ui->toolBar->addSeparator();
 
     i = new Systemus::StandardUserInterface("role", this);
-    i->dataModel()->setClass(Systemus::DataInfo::fromName("Systemus::Role"));
+    i->setDataModel(QByteArrayLiteral("Systemus::Role"));
     i->dataModel()->setProperties({ "name", "active", "creationDate", "creationTime" });
     manager.addInterface(i);
 
     i = new Systemus::StandardUserInterface("group", this);
-    i->dataModel()->setClass(Systemus::DataInfo::fromName("Systemus::Group"));
+    i->setDataModel(QByteArrayLiteral("Systemus::Group"));
     i->dataModel()->setProperties({ "name", "active", "creationDate", "creationTime" });
     manager.addInterface(i);
 
     ui->toolBar->addSeparator();
 
     i = new Systemus::StandardUserInterface("privilege", this);
-    i->dataModel()->setClass(Systemus::DataInfo::fromName("Systemus::Privilege"));
+    i->setDataModel(QByteArrayLiteral("Systemus::Privilege"));
     i->dataModel()->setProperties({ "name", "active", "creationDate", "creationTime" });
     manager.addInterface(i);
 
     i = new Systemus::StandardUserInterface("permission", this);
-    i->dataModel()->setClass(Systemus::DataInfo::fromName("Systemus::Permission"));
+    i->setDataModel(QByteArrayLiteral("Systemus::Permission"));
     i->dataModel()->setProperties({ "name", "active", "creationDate", "creationTime" });
     i->dataModel()->setHeaderData(0, Qt::Horizontal, tr("Name"));
     i->dataModel()->setHeaderData(1, Qt::Horizontal, tr("Active"));
