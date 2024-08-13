@@ -68,6 +68,7 @@ class DefaultDataPrivate : public DataPrivate
 {
 public:
     DefaultDataPrivate();
+    DefaultDataPrivate(const DefaultDataPrivate &other) = default;
     virtual ~DefaultDataPrivate();
 
     void init() override;
@@ -111,11 +112,17 @@ public:
     ~AdapterDataPrivate();
 
     const Data *adaptedData() const;
+    Data *adaptedData();
 
     void init() override;
 
     int id() const override;
     void setId(int id) override;
+
+    void fillRecord(QSqlRecord *record, const Data *data) const override;
+    void fillWithRecord(const QSqlRecord &record, Data *data) override;
+
+    virtual void fillJsonObject(QJsonObject *object, const Data *data) const override;
 
     bool isValid() const override;
     bool isEmpty() const override;

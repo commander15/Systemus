@@ -15,6 +15,14 @@ target_include_directories(core
 
 target_link_libraries(core PUBLIC Qt::Core Qt::Sql PRIVATE bcrypt)
 
+if (BUILD_SHARED_LIBS)
+    set(BUILD_TYPE SHARED)
+else()
+    set(BUILD_TYPE STATIC)
+endif()
+
+target_compile_definitions(core PUBLIC SYSTEMUS_${BUILD_TYPE})
+
 install(TARGETS core
     EXPORT SystemusCoreTargets
     ARCHIVE DESTINATION lib

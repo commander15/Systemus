@@ -88,7 +88,7 @@ protected:
 };
 
 template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT DataRelation : public AbstractDataRelation
+class DataRelation : public AbstractDataRelation
 {
 public:
     DataInfo foreignInfo() const override
@@ -102,6 +102,7 @@ public:
 protected:
     virtual ForeignData dataFromRecord(const QSqlRecord &record)
     { return Data::fromSqlRecord<ForeignData>(record); }
+
     virtual void saveData(const ForeignData &data) = 0;
 
     virtual QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const
@@ -109,7 +110,7 @@ protected:
 
     bool getAllData(const Data &primary, const QString &foreignProperty, const QString &indexProperty) override
     {
-        const QString statement = selectStatement(primary, indexProperty, foreignProperty);
+        const QString statement = selectStatement(primary, foreignProperty, indexProperty);
 
         bool ok;
         QSqlQuery query = exec(statement, &ok, primary);
@@ -128,7 +129,7 @@ protected:
 };
 
 template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT SingleRelation : public DataRelation<ForeignData>
+class SingleRelation : public DataRelation<ForeignData>
 {
 public:
     operator const ForeignData &() const
@@ -254,6 +255,9 @@ protected:
             indexFieldName = foreignInfo.idPropertyName();
 
         const QString filter = QStringLiteral("%1 = %2").arg(indexFieldName).arg(this->formatedPropertyValue(foreignPropertyName, primary));
+        if (foreignProperty == "hostessId")
+            ;
+
         return this->generateSelectStatement(foreignInfo.tableName(), foreignInfo.record(), filter);
     }
 
@@ -261,7 +265,7 @@ protected:
 };
 
 template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT MultiRelation : public DataRelation<ForeignData>, public QList<ForeignData>
+class MultiRelation : public DataRelation<ForeignData>, public QList<ForeignData>
 {
 public:
     bool operator==(const MultiRelation<ForeignData> &other) const
@@ -344,7 +348,7 @@ protected:
 // One To One Relationship
 
 template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT OneToOneRelation : public SingleRelation<ForeignData>
+class OneToOneRelation : public SingleRelation<ForeignData>
 {
 public:
     ForeignData &operator=(const ForeignData &other)
@@ -399,7 +403,7 @@ protected:
 // Many To One Relationship
 
 template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT ManyToOneRelation : public SingleRelation<ForeignData>
+class ManyToOneRelation : public SingleRelation<ForeignData>
 {
 public:
     ForeignData &operator=(const ForeignData &other)
@@ -415,7 +419,7 @@ public:
 // Many To Many Relationship
 
 template<typename ForeignData>
-class SYSTEMUS_CORE_EXPORT ManyToManyRelation : public MultiRelation<ForeignData>
+class ManyToManyRelation : public MultiRelation<ForeignData>
 {
 public:
     ManyToManyRelation() = default;

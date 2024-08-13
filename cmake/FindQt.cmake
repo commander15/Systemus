@@ -7,6 +7,10 @@ if (Systemus_BUILD_TEST)
     list(APPEND QT_MODULES Test)
 endif()
 
+if (Systemus_BUILD_TRANSLATIONS)
+    list(APPEND QT_MODULES LinguistTools)
+endif()
+
 if (Systemus_BUILD_WIDGETS)
     list(APPEND QT_MODULES Widgets)
 endif()

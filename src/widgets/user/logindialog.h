@@ -28,6 +28,9 @@ public:
 
     void setShowOnLogOut(bool show = true);
 
+    Q_SLOT void showLogin();
+    Q_SLOT void showSettings();
+
     Q_SLOT void done(int r) override;
 
 private:

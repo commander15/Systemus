@@ -174,12 +174,12 @@ protected:
 private:
     S_DECLARE_PRIVATE(Data)
 
-    inline QString selectStatement() const;
+    virtual QString selectStatement() const;
     static QString selectStatement(const DataInfo &info);
 
-    QString insertStatement() const;
-    QString updateStatement() const;
-    QString deleteStatement() const;
+    virtual QString insertStatement() const;
+    virtual QString updateStatement() const;
+    virtual QString deleteStatement() const;
 
     void bindQueryValues(QSqlQuery &query) const;
 

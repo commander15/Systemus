@@ -63,13 +63,13 @@ QVariant DataTableModel::headerData(int section, Qt::Orientation orientation, in
 {
     S_D(const DataTableModel);
 
-    if (orientation == Qt::Vertical)
-        return AbstractDataModel::headerData(section, orientation, role);
-
     switch (role) {
     case Qt::DisplayRole:
     case Qt::EditRole:
-        return d->columnName(section);
+        if (orientation == Qt::Horizontal)
+            return d->columnName(section);
+        else
+            return d->itemNumber(section);
 
     default:
         return AbstractDataModel::headerData(section, orientation, role);

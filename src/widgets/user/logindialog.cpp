@@ -21,7 +21,8 @@ LoginDialog::LoginDialog(QWidget *parent) :
 
     System *system = System::instance();
 
-    QPixmap logoPixmap = QPixmap::fromImage(system->logo());
+    QPixmap logoPixmap;
+    logoPixmap.loadFromData(system->logoData(), "PNG");
     if (!logoPixmap.isNull())
         ui->systemLogoOutput->setPixmap(logoPixmap.scaled(320, 80, Qt::KeepAspectRatio));
 
@@ -90,6 +91,18 @@ void LoginDialog::setShowOnLogOut(bool show)
         disconnect(auth, &Authenticator::loggedOut, this, &QWidget::show);
 
     _showOnLogOut = show;
+}
+
+void LoginDialog::showLogin()
+{
+    toggleView(false);
+    show();
+}
+
+void LoginDialog::showSettings()
+{
+    toggleView(true);
+    show();
 }
 
 void LoginDialog::done(int r)

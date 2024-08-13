@@ -1,5 +1,5 @@
 function(systemus_add_executable name)
-    qt6_add_executable(${name} ${ARGN})
+    qt_add_executable(${name} ${ARGN})
     _systemus_register_target(${name} EXECUTABLE)
 endfunction()
 
@@ -27,6 +27,7 @@ function(systemus_add_library name)
         PROPERTIES
             SYSTEMUS_NAME   "${ARG_NAME}"
             SYSTEMUS_SYSTEM "${ARG_SYSTEM}"
+            OUTPUT_NAME     "${ARG_SYSTEM}${ARG_NAME}"
     )
 
     target_compile_definitions(${name}

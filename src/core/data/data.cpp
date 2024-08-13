@@ -42,7 +42,12 @@ Data::Data(const Data &other, bool adapt)
         if (metaType.isValid()) {
             Data *otherCopy = static_cast<Data *>(metaType.create(&other));
             d_ptr.reset(new AdapterDataPrivate(otherCopy));
+        } else {
+            qDebug() << "Meta type for " << other.dataClassName() << " not found !";
         }
+
+        qDebug() << "Adapted: ";
+        other.dumpInfos();
     }
 
     if (!d_ptr)
@@ -234,8 +239,7 @@ bool Data::getData(const QString &filter)
 
 bool Data::getExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->getExtras(type) : true);
 }
 
 bool Data::save()
@@ -268,8 +272,7 @@ bool Data::insert()
 
 bool Data::insertExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->insertExtras(type) : true);
 }
 
 bool Data::update()
@@ -287,8 +290,7 @@ bool Data::update()
 
 bool Data::updateExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->updateExtras(type) : true);
 }
 
 bool Data::deleteData()
@@ -311,8 +313,7 @@ bool Data::deleteData()
 
 bool Data::deleteExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->deleteExtras(type) : true);
 }
 
 DataInfo Data::info() const
@@ -469,7 +470,7 @@ QString Data::insertStatement() const
     S_D(const Data);
     QSqlRecord record = toSqlRecord();
     record.remove(0);
-    return driver()->sqlStatement(QSqlDriver::InsertStatement, info().tableName(), toSqlRecord(), false);
+    return driver()->sqlStatement(QSqlDriver::InsertStatement, info().tableName(), record, false);
 }
 
 QString Data::updateStatement() const
@@ -1191,7 +1192,6 @@ DefaultDataPrivate::~DefaultDataPrivate()
 
 void DefaultDataPrivate::init()
 {
-    const DataInfo info = dataInfo();
     const QStringList properties = dataInfo().secretPropertyNames();
     for (const QString &property : properties)
         _properties.insert(property, QVariant());
@@ -1226,7 +1226,10 @@ bool DefaultDataPrivate::equals(const DataPrivate *o) const
 void DefaultDataPrivate::clear()
 {
     _id = 0;
-    _properties.clear();
+
+    const QStringList properties = dataInfo().secretPropertyNames();
+    for (const QString &property : properties)
+        _properties.insert(property, QVariant());
 }
 
 QByteArray DefaultDataPrivate::dataClassName() const
@@ -1282,6 +1285,11 @@ const Data *AdapterDataPrivate::adaptedData() const
     return _data;
 }
 
+Data *AdapterDataPrivate::adaptedData()
+{
+    return _data;
+}
+
 void AdapterDataPrivate::init()
 {
     _data->init();
@@ -1295,6 +1303,24 @@ int AdapterDataPrivate::id() const
 void AdapterDataPrivate::setId(int id)
 {
     _data->setId(id);
+}
+
+void AdapterDataPrivate::fillRecord(QSqlRecord *record, const Data *data) const
+{
+    *record = _data->toSqlRecord();
+    Q_UNUSED(data);
+}
+
+void AdapterDataPrivate::fillWithRecord(const QSqlRecord &record, Data *data)
+{
+    _data->fill(record, record.contains("id"));
+    Q_UNUSED(data);
+}
+
+void AdapterDataPrivate::fillJsonObject(QJsonObject *object, const Data *data) const
+{
+    *object = _data->toJsonObject();
+    Q_UNUSED(data);
 }
 
 bool AdapterDataPrivate::isValid() const

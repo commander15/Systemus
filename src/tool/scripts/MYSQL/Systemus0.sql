@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS Systems (
     id      INTEGER     PRIMARY KEY DEFAULT 1 CHECK(id = 1),
     name    VARCHAR(32) UNIQUE NOT NULL,
+    icon    MEDIUMBLOB,
     version VARCHAR(16) NOT NULL
 );
 

@@ -39,7 +39,7 @@ StandardUserInterface::StandardUserInterface(const QByteArray &id, QWidget *pare
     connect(ui->actionSearch, &QAction::triggered, this, &StandardUserInterface::search);
 
     connect(ui->refreshButton, &QAbstractButton::clicked, this, &StandardUserInterface::refresh);
-    connect(ui->addButton, &QAbstractButton::clicked, this, &StandardUserInterface::addData);
+    connect(ui->addButton, &QAbstractButton::clicked, this, QOverload<>::of(&StandardUserInterface::addData));
     connect(ui->editButton, &QAbstractButton::clicked, this, &StandardUserInterface::editData);
     connect(ui->deleteButton, &QAbstractButton::clicked, this, &StandardUserInterface::deleteData);
     connect(ui->printButton, &QAbstractButton::clicked, this, &StandardUserInterface::printData);
@@ -91,18 +91,27 @@ void StandardUserInterface::showData()
 
 void StandardUserInterface::addData()
 {
+    addData(Data());
+}
+
+void StandardUserInterface::addData(const Data &data)
+{
     S_D(StandardUserInterface);
     if (!d->editDialog)
         return;
 
-    d->editDialog->clear();
+    if (!data.isEmpty())
+        d->editDialog->setData(data);
+    else
+        d->editDialog->clear();
+
     d->editDialog->setReadOnly(false);
     if (!d->editDialog->exec())
         return;
 
-    Data data = d->editDialog->data();
+    Data editedData = d->editDialog->data();
     Data::beginTransaction();
-    if (data.insert()) {
+    if (editedData.insert()) {
         Data::commitTransaction();
         refresh();
     } else {
@@ -372,14 +381,19 @@ QVariant StandardUserInterface::processAction(int action, const QVariantList &da
         break;
 
     case ShowAction:
+        if (!data.isEmpty() && d->editDialog)
+            d->editDialog->setData(data.constFirst().value<Data>());
         showData();
         break;
 
     case AddAction:
-        addData();
+        if (d->editDialog)
+            addData(!data.isEmpty() ? data.constFirst().value<Data>() : Data());
         break;
 
     case EditAction:
+        if (!data.isEmpty() && d->editDialog)
+            d->editDialog->setData(data.constFirst().value<Data>());
         editData();
         break;
 

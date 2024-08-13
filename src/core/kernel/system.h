@@ -3,10 +3,6 @@
 
 #include <SystemusCore/global.h>
 
-#ifdef QT_GUI_LIB
-#   include <QtGui/qimage.h>
-#endif
-
 #include <QtCore/qobject.h>
 
 class QVersionNumber;
@@ -30,9 +26,6 @@ class SYSTEMUS_CORE_EXPORT System : public QObject
 public:
     ~System();
 
-#ifdef QT_GUI_LIB
-    inline QImage logo() const;
-#endif
     QByteArray logoData() const;
 
     QString name() const;
@@ -93,13 +86,6 @@ public:
     QDate date() const;
     QTime time() const;
 };*/
-
-#ifdef QT_GUI_LIB
-
-QImage System::logo() const
-{ return QImage::fromData(logoData(), "PNG"); }
-
-#endif
 
 }
 

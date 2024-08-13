@@ -60,7 +60,7 @@ void UserInterface::setInterfaceTitle(const QString &title)
 
 bool UserInterface::canHandleAction(int action) const
 {
-    return action != 0;
+    return supportAction(action);
 }
 
 bool UserInterface::supportAction(int action) const
@@ -71,10 +71,12 @@ bool UserInterface::supportAction(int action) const
 
 QVariant UserInterface::trigger(int action, const QVariantList &data)
 {
-    if (supportAction(action))
+    if (canHandleAction(action))
         return processAction(action, data);
-    else
+    else {
+        qWarning() << "Unsupported action" << action << "trigerred on" << d_ptr->id;
         return QVariant();
+    }
 }
 
 QAction *UserInterface::interfaceAction() const

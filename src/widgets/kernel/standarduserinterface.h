@@ -46,6 +46,7 @@ public:
     Q_SLOT bool refresh();
     Q_SLOT void showData();
     Q_SLOT void addData();
+    Q_SLOT void addData(const Data &data);
     Q_SLOT void editData();
     Q_SLOT void deleteData();
     Q_SLOT void printData();
