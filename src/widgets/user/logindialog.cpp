@@ -92,6 +92,18 @@ void LoginDialog::setShowOnLogOut(bool show)
     _showOnLogOut = show;
 }
 
+void LoginDialog::showLogin()
+{
+    toggleView(false);
+    show();
+}
+
+void LoginDialog::showSettings()
+{
+    toggleView(true);
+    show();
+}
+
 void LoginDialog::done(int r)
 {
     ui->passwordInput->clear();

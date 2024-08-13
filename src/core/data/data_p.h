@@ -68,6 +68,7 @@ class DefaultDataPrivate : public DataPrivate
 {
 public:
     DefaultDataPrivate();
+    DefaultDataPrivate(const DefaultDataPrivate &other) = default;
     virtual ~DefaultDataPrivate();
 
     void init() override;
@@ -111,6 +112,7 @@ public:
     ~AdapterDataPrivate();
 
     const Data *adaptedData() const;
+    Data *adaptedData();
 
     void init() override;
 

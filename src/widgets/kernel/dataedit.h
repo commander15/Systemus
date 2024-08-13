@@ -51,6 +51,7 @@ class SYSTEMUS_WIDGETS_EXPORT DataEditDialog : public QDialog
 
 public:
     explicit DataEditDialog(QWidget *parent = nullptr);
+    template<typename EditWidget> DataEditDialog(QWidget *parent = nullptr);
     virtual ~DataEditDialog();
 
     Data data() const;
@@ -62,9 +63,11 @@ public:
     bool isReadOnly() const;
     void setReadOnly(bool r);
 
+    int exec() override;
+
     template<typename T>
     static DataEditDialog *fromEdit(QWidget *parent)
-    { return fromEdit(new T(parent), parent); }
+    { return fromEdit(new T(/* parent */), parent); }
     static DataEditDialog *fromEdit(DataEdit *edit, QWidget *parent);
 
 protected:
@@ -86,6 +89,11 @@ private:
     friend class DefaultDataEditDialogPrivate;
     friend class ForwardedDataEditDialogPrivate;
 };
+
+template<typename EditWidget>
+DataEditDialog::DataEditDialog(QWidget *parent) :
+    DataEditDialog(new EditWidget(this), parent)
+{}
 
 }
 

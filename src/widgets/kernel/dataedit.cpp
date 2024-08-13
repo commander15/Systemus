@@ -94,6 +94,8 @@ DataEditDialog::DataEditDialog(DataEdit *edit, QWidget *parent) :
     setWindowTitle(edit->windowTitle());
     connect(edit, &QWidget::windowTitleChanged, this, &QWidget::setWindowTitle);
 
+    setFocusProxy(edit);
+
     const QSize size = ui->verticalLayout->minimumSize();
     setMinimumSize(size);
     setMaximumSize(size);
@@ -142,6 +144,12 @@ void DataEditDialog::setReadOnly(bool r)
         ui->buttonBox->setStandardButtons(QDialogButtonBox::Save|QDialogButtonBox::Cancel);
     else
         ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
+}
+
+int DataEditDialog::exec()
+{
+    setFocus();
+    return QDialog::exec();
 }
 
 DataEditDialog *DataEditDialog::fromEdit(DataEdit *edit, QWidget *parent)

@@ -234,8 +234,7 @@ bool Data::getData(const QString &filter)
 
 bool Data::getExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->getExtras(type) : true);
 }
 
 bool Data::save()
@@ -268,8 +267,7 @@ bool Data::insert()
 
 bool Data::insertExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->insertExtras(type) : true);
 }
 
 bool Data::update()
@@ -287,8 +285,7 @@ bool Data::update()
 
 bool Data::updateExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->updateExtras(type) : true);
 }
 
 bool Data::deleteData()
@@ -311,8 +308,7 @@ bool Data::deleteData()
 
 bool Data::deleteExtras(ExtraType type)
 {
-    Q_UNUSED(type);
-    return true;
+    return (d_ptr->isAdapted() ? static_cast<AdapterDataPrivate *>(d_ptr.get())->adaptedData()->deleteExtras(type) : true);
 }
 
 DataInfo Data::info() const
@@ -469,7 +465,7 @@ QString Data::insertStatement() const
     S_D(const Data);
     QSqlRecord record = toSqlRecord();
     record.remove(0);
-    return driver()->sqlStatement(QSqlDriver::InsertStatement, info().tableName(), toSqlRecord(), false);
+    return driver()->sqlStatement(QSqlDriver::InsertStatement, info().tableName(), record, false);
 }
 
 QString Data::updateStatement() const
@@ -1191,7 +1187,6 @@ DefaultDataPrivate::~DefaultDataPrivate()
 
 void DefaultDataPrivate::init()
 {
-    const DataInfo info = dataInfo();
     const QStringList properties = dataInfo().secretPropertyNames();
     for (const QString &property : properties)
         _properties.insert(property, QVariant());
@@ -1226,7 +1221,10 @@ bool DefaultDataPrivate::equals(const DataPrivate *o) const
 void DefaultDataPrivate::clear()
 {
     _id = 0;
-    _properties.clear();
+
+    const QStringList properties = dataInfo().secretPropertyNames();
+    for (const QString &property : properties)
+        _properties.insert(property, QVariant());
 }
 
 QByteArray DefaultDataPrivate::dataClassName() const
@@ -1278,6 +1276,11 @@ AdapterDataPrivate::~AdapterDataPrivate()
 }
 
 const Data *AdapterDataPrivate::adaptedData() const
+{
+    return _data;
+}
+
+Data *AdapterDataPrivate::adaptedData()
 {
     return _data;
 }

@@ -279,37 +279,23 @@ bool SystemPrivate::syncSettings(bool force)
             record.setValue(2, settings.value(name).toString());
             record.setValue(3, settingTypeFromMetatype(value.metaType()));
 
-            QString statement;
+            QString statement = Data::driver()->sqlStatement(QSqlDriver::InsertStatement, table, record, false);
 
-            // Bug: saves data with string type only (40)
+            // Warning: MySQL only !
+            statement.append(" ON DUPLICATE KEY UPDATE value = VALUES(value), type = VALUES(type)");
 
-            if (settingKeyIds.contains(settingKey(name))) {
-                if (!settingKeyIds.contains(name)) {
-                    statement = Data::driver()->sqlStatement(QSqlDriver::InsertStatement, table, record, false);
-                    QSqlQuery query = Data::execQuery(statement, &ok);
+            Data::execQuery(statement, &ok);
 
-                    if (ok)
-                        settingKeyIds.insert(name, query.lastInsertId().toInt());
-                } else {
-                    statement = Data::driver()->sqlStatement(QSqlDriver::UpdateStatement, table, record, false);
-                    statement.append(" WHERE id = " + QString::number(settingKeyIds.value(name)));
-                    Data::execQuery(statement, &ok);
-                }
-            } else {
-                int id = settingKeyIds.value(name, 0);
-                if (id > 0) {
-                    statement = Data::driver()->sqlStatement(QSqlDriver::DeleteStatement, table, QSqlRecord(), false);
-                    statement.append(" WHERE id = " + QString::number(id));
-                    Data::execQuery(statement, &ok);
-                }
-            }
+            if (!ok)
+                break;
         }
 
-        if (ok)
+        if (ok) {
             Data::commitTransaction();
-        else
+            dirtySettingKeys.clear();
+        } else {
             Data::rollbackTransaction();
-        dirtySettingKeys.clear();
+        }
     }
 
     settings.endGroup();

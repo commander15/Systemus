@@ -102,6 +102,7 @@ public:
 protected:
     virtual ForeignData dataFromRecord(const QSqlRecord &record)
     { return Data::fromSqlRecord<ForeignData>(record); }
+
     virtual void saveData(const ForeignData &data) = 0;
 
     virtual QString selectStatement(const Data &primary, const QString &foreignProperty, const QString &indexProperty) const
@@ -109,7 +110,7 @@ protected:
 
     bool getAllData(const Data &primary, const QString &foreignProperty, const QString &indexProperty) override
     {
-        const QString statement = selectStatement(primary, indexProperty, foreignProperty);
+        const QString statement = selectStatement(primary, foreignProperty, indexProperty);
 
         bool ok;
         QSqlQuery query = exec(statement, &ok, primary);
@@ -254,6 +255,9 @@ protected:
             indexFieldName = foreignInfo.idPropertyName();
 
         const QString filter = QStringLiteral("%1 = %2").arg(indexFieldName).arg(this->formatedPropertyValue(foreignPropertyName, primary));
+        if (foreignProperty == "hostessId")
+            ;
+
         return this->generateSelectStatement(foreignInfo.tableName(), foreignInfo.record(), filter);
     }
 

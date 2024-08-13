@@ -24,6 +24,10 @@ endmacro()
 
 ####################################################################################
 
+if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/SystemusExtraTargets.cmake)
+    include(${CMAKE_CURRENT_LIST_DIR}/SystemusExtraTargets.cmake)
+endif()
+
 include(${CMAKE_CURRENT_LIST_DIR}/SystemusMacros.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/SystemusCoreTargets.cmake)
 

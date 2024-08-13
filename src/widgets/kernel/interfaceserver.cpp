@@ -92,11 +92,12 @@ void InterfaceServer::processActionSupportUpdate(int action, bool supported)
 
 void InterfaceServer::processExternalAction(const QByteArray &targetId, int action, const QVariantList &data)
 {
+    qDebug() << "External action for " << targetId << ", " << action << ", " << data;
     if (targetId == SYSTEMUS_INTERFACE_SERVER_ID)
         processServerAction(action, data);
     else {
         UserInterface *interface = interfaceById(targetId);
-        if (interface)
+        if (interface && interface->canHandleAction(action))
             interface->trigger(action, data);
     }
 }
