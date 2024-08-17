@@ -55,8 +55,8 @@ LoginDialog::LoginDialog(QWidget *parent) :
     connect(auth, &Authenticator::loggedIn, this, [this](const User &) { accept(); });
     connect(auth, &Authenticator::logInError, this, &LoginDialog::processError);
 
-    connect(System::instance(), &System::online, this, &LoginDialog::updateSystemData);
-    connect(System::instance(), &System::online, this, &QWidget::show);
+    connect(system, &System::online, this, &LoginDialog::updateSystemData);
+    connect(system, &System::online, this, &QWidget::show);
 
     connect(this, &QDialog::rejected, qApp, &QCoreApplication::quit);
 }
@@ -64,19 +64,6 @@ LoginDialog::LoginDialog(QWidget *parent) :
 LoginDialog::~LoginDialog()
 {
     delete ui;
-}
-
-QPixmap LoginDialog::logo() const
-{
-    return ui->systemLogoOutput->pixmap();
-}
-
-void LoginDialog::setLogo(const QPixmap &logo, Qt::Orientation orientation)
-{
-    if (orientation == Qt::Horizontal)
-        ui->systemLogoOutput->setPixmap(logo.scaled(QSize(256, 80), Qt::KeepAspectRatio));
-    else
-        ui->systemLogoOutput->setPixmap(logo.scaled(QSize(80, 80), Qt::KeepAspectRatio));
 }
 
 void LoginDialog::setShowOnLogOut(bool show)
@@ -111,6 +98,13 @@ void LoginDialog::done(int r)
     QDialog::done(r);
 }
 
+void LoginDialog::setVisible(bool visible)
+{
+    if (visible)
+        toggleView(!System::instance()->isDatabaseOpen());
+    QDialog::setVisible(visible);
+}
+
 void LoginDialog::togglePasswordVisibility()
 {
     bool hidden = (ui->passwordInput->echoMode() == QLineEdit::Password);
@@ -143,6 +137,9 @@ void LoginDialog::clearError()
 void LoginDialog::toggleView(bool settings)
 {
     ui->stackedWidget->setCurrentIndex(settings ? 1 : 0);
+
+    if (settings)
+        ui->tabWidget->setTabVisible(0, System::instance()->isDatabaseOpen());
 }
 
 void LoginDialog::saveDatabaseSettings()
@@ -153,6 +150,9 @@ void LoginDialog::saveDatabaseSettings()
     db.setUserName(ui->databaseUserInput->text());
     db.setPassword(ui->databasePasswordInput->text());
     db.setDatabaseName(ui->databaseNameInput->text());
+
+    System::instance()->saveDatabaseSettings();
+    updateSystemData();
 }
 
 void LoginDialog::testDatabaseConnection()

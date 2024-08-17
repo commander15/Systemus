@@ -353,6 +353,13 @@ void *Data::internalData()
     return d_ptr.get();
 }
 
+QSqlQuery Data::prepareQuery(const QString &query)
+{
+    QSqlQuery qu;
+    qu.prepare(query);
+    return qu;
+}
+
 QSqlQuery Data::execCachedQuery(const QString &query, bool *ok, QSqlError *error)
 {
     return execQuery(query, ok, error, true);
@@ -360,22 +367,55 @@ QSqlQuery Data::execCachedQuery(const QString &query, bool *ok, QSqlError *error
 
 QSqlQuery Data::execQuery(const QString &query, bool *ok, QSqlError *error, bool cached)
 {
+    return execQuery(query, QVariantList(), ok, error, cached);
+}
+
+QSqlQuery Data::execQuery(const QString &query, const QVariantList &values, bool *ok, QSqlError *error, bool cached)
+{
     QSqlQuery qu;
-    qu.setForwardOnly(!cached);
+    qu.prepare(query);
+    for (const QVariant &value : values)
+        qu.addBindValue(value);
 
     if (ok)
-        *ok = qu.exec(query);
+        *ok = execQuery(qu, cached, error);
     else
-        qu.exec(query);
-
-    systemusSqlInfo() << query;
-    if (qu.lastError().isValid()) {
-        if (error)
-            *error = qu.lastError();
-        systemusSqlWarning() << qu.lastError().databaseText();
-    }
+        execQuery(qu, cached, error);
 
     return qu;
+}
+
+QSqlQuery Data::execQuery(const QString &query, const QVariantHash &values, bool *ok, QSqlError *error, bool cached)
+{
+    QSqlQuery qu;
+    qu.prepare(query);
+
+    const QStringList fields = values.keys();
+    for (const QString &field : fields)
+        qu.bindValue(field, values.value(field));
+
+    if (ok)
+        *ok = execQuery(qu, cached, error);
+    else
+        execQuery(qu, cached, error);
+
+    return qu;
+}
+
+bool Data::execQuery(QSqlQuery &query, bool cached, QSqlError *error)
+{
+    query.setForwardOnly(!cached);
+
+    bool ok = query.exec();
+    systemusSqlInfo() << query.lastQuery();
+
+    if (query.lastError().isValid()) {
+        if (error)
+            *error = query.lastError();
+        systemusSqlWarning() << query.lastError().databaseText();
+    }
+
+    return ok;
 }
 
 bool Data::beginTransaction()
@@ -1181,8 +1221,7 @@ DataInfo DataPrivate::dataInfo() const
     return DataInfoPrivate::registry.value(dataClassName());
 }
 
-DefaultDataPrivate::DefaultDataPrivate() :
-    _id(0)
+DefaultDataPrivate::DefaultDataPrivate()
 {
 }
 
@@ -1197,24 +1236,24 @@ void DefaultDataPrivate::init()
         _properties.insert(property, QVariant());
 }
 
-int DefaultDataPrivate::id() const
+QVariant DefaultDataPrivate::id() const
 {
     return _id;
 }
 
-void DefaultDataPrivate::setId(int id)
+void DefaultDataPrivate::setId(const QVariant &id)
 {
     _id = id;
 }
 
 bool DefaultDataPrivate::isValid() const
 {
-    return _id > 0;
+    return !_id.isNull();
 }
 
 bool DefaultDataPrivate::isEmpty() const
 {
-    return _id == 0 && _properties.isEmpty();
+    return _id.isNull() && _properties.isEmpty();
 }
 
 bool DefaultDataPrivate::equals(const DataPrivate *o) const
@@ -1295,12 +1334,12 @@ void AdapterDataPrivate::init()
     _data->init();
 }
 
-int AdapterDataPrivate::id() const
+QVariant AdapterDataPrivate::id() const
 {
     return _data->id();
 }
 
-void AdapterDataPrivate::setId(int id)
+void AdapterDataPrivate::setId(const QVariant &id)
 {
     _data->setId(id);
 }

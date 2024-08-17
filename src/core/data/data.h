@@ -69,6 +69,9 @@ public:
 
     void init();
 
+    template<typename T = int> T id() const;
+    template<typename T = int> void setId(const T &id);
+
     int id() const;
     void setId(int id);
 
@@ -117,8 +120,13 @@ public:
     const void *internalData() const;
     void *internalData();
 
+    static QSqlQuery prepareQuery(const QString &query);
+
     static QSqlQuery execCachedQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr);
     static QSqlQuery execQuery(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr, bool cached = false);
+    static QSqlQuery execQuery(const QString &query, const QVariantList &values, bool *ok = nullptr, QSqlError *error = nullptr, bool cached = false);
+    static QSqlQuery execQuery(const QString &query, const QVariantHash &values, bool *ok = nullptr, QSqlError *error = nullptr, bool cached = false);
+    static bool execQuery(QSqlQuery &query, bool cached, QSqlError *error = nullptr);
 
     static bool beginTransaction();
     static bool commitTransaction();

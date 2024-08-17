@@ -29,8 +29,17 @@ if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/SystemusExtraTargets.cmake)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/SystemusMacros.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/SystemusCoreTargets.cmake)
 
+# Core
+include(${CMAKE_CURRENT_LIST_DIR}/SystemusCoreTargets.cmake)
+set(Systemus_Qt_COMPONENTS Core Sql)
+
+# Widgets
 if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/SystemusWidgetsTargets.cmake)
     include(${CMAKE_CURRENT_LIST_DIR}/SystemusWidgetsTargets.cmake)
+    list(APPEND Systemus_Qt_COMPONENTS Widgets)
 endif()
+
+macro(find_qt version)
+    find_package(Qt${version} COMPONENTS ${Systemus_Qt_COMPONENTS} ${ARGN})
+endmacro()

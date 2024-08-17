@@ -3,49 +3,45 @@
 
 #include <SystemusCore/datatablemodel.h>
 
-#include <SystemusCore/private/abstractdatamodel_p.h>
+#include <QtCore/qcache.h>
 
 namespace Systemus {
 
-class DataTableProperty;
+struct DataTableModelLink
+{
+    QByteArray className;
+    QString foreignProperty;
+    QString indexProperty;
+};
 
-class DataTableModelPrivate : public AbstractDataModelPrivate
+class DataTableModelPrivate : public DataSearch
 {
 public:
     DataTableModelPrivate(DataTableModel *q);
 
-    QString columnName(int index) const;
-    int columnCount() const;
+    Data *item(int index) const;
+    void clearItems();
 
-    int itemNumber(int index) const;
-    QVariant itemData(int row, int propertyIndex) const;
-    bool setItemData(int row, int propertyIndex, const QVariant &data);
+    QString filter() const;
+    void setFilter(const QString &filter);
 
-    QString propertyName(int index) const;
+    QString searchQuery();
+    void setSearchQuery(const QString &query);
 
-    QHash<int, QVariant> headerData;
-    QList<DataTableProperty> properties;
-};
+    int sortColumn() const;
+    Qt::SortOrder sortOrder() const;
+    void setSort(int column, Qt::SortOrder order);
 
-class DataTableProperty
-{
-public:
-    DataTableProperty(const QString &name, DataTableModelPrivate *model, std::function<QVariant (const Data &)> getter);
-    DataTableProperty(const QString &name, DataTableModelPrivate *model, std::function<QVariant (const Data &)> getter, std::function<void(Data *, const QVariant &)> setter);
-    DataTableProperty(int index, DataTableModelPrivate *model);
+    DataTableModel *q_ptr;
 
-    QString name() const;
-    QVariant value(int index) const;
-    void setValue(int index, const QVariant &value);
+    DataInfo classInfo;
+    QStringList properties;
+    QStringList searchProperties;
+    QVector<DataTableModelLink> links;
 
 private:
-    QString *_name;
-    std::function<QVariant(const Data &)> _getter;
-    std::function<void(Data *, const QVariant &)> _setter;
-
-    int _index;
-    DataTableModelPrivate *_model;
-
+    mutable QCache<int, Data> m_items;
+    QString m_searchQuery;
 };
 
 }

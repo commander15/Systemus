@@ -23,15 +23,14 @@ public:
     LoginDialog(QWidget *parent = nullptr);
     ~LoginDialog();
 
-    QPixmap logo() const;
-    void setLogo(const QPixmap &logo, Qt::Orientation orientation);
-
     void setShowOnLogOut(bool show = true);
 
     Q_SLOT void showLogin();
     Q_SLOT void showSettings();
 
     Q_SLOT void done(int r) override;
+
+    Q_SLOT void setVisible(bool visible) override;
 
 private:
     Q_SLOT void togglePasswordVisibility();

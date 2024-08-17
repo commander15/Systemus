@@ -1,4 +1,4 @@
-target_headers(core
+target_headers(Core
     PUBLIC
         authenticator.h
         user.h
@@ -14,7 +14,7 @@ target_headers(core
         privilege_p.h
 )
 
-target_sources(core
+target_sources(Core
     PRIVATE
         authenticator.cpp
         user.cpp

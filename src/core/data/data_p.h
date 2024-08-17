@@ -28,8 +28,8 @@ public:
 
     virtual void init();
 
-    virtual int id() const = 0;
-    virtual void setId(int id) = 0;
+    virtual QVariant id() const = 0;
+    virtual void setId(const QVariant &id) = 0;
 
     bool hasProperty(const QString &name, const Data *data = nullptr) const;
     QVariant property(const QString &name, const Data *data = nullptr) const;
@@ -73,8 +73,8 @@ public:
 
     void init() override;
 
-    int id() const override;
-    void setId(int id) override;
+    QVariant id() const override;
+    void setId(const QVariant &id) override;
 
     bool isValid() const override;
     bool isEmpty() const override;
@@ -98,7 +98,7 @@ protected:
     bool setDataProperty(const QString &name, const QVariant &value) override;
 
 private:
-    int _id;
+    QVariant _id;
     QVariantHash _properties;
     QByteArray _className;
     mutable QSqlError _lastError;
@@ -116,8 +116,8 @@ public:
 
     void init() override;
 
-    int id() const override;
-    void setId(int id) override;
+    QVariant id() const override;
+    void setId(const QVariant &id) override;
 
     void fillRecord(QSqlRecord *record, const Data *data) const override;
     void fillWithRecord(const QSqlRecord &record, Data *data) override;

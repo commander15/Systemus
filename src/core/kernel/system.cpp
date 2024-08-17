@@ -20,22 +20,34 @@ System::System(QObject *parent) :
 {
     connect(d.get(), &SystemPrivate::onlineStateChanged, this, [this](bool online) {
         emit onlineStateChanged(online);
-        if (online)
+        if (online) {
             emit this->online();
-        else
+
+            if (d->nowTimerId == -1)
+                d->nowTimerId = startTimer(1000);
+
+            if (d->heartbeatTimerId == -1)
+                d->heartbeatTimerId = startTimer(d->heartbeatInterval);
+        } else {
             emit this->offline();
+
+            if (d->heartbeatTimerId != -1) {
+                killTimer(d->heartbeatTimerId);
+                d->heartbeatTimerId = -1;
+            }
+        }
     });
 
     QTimer::singleShot(0, this, &System::sync);
-
-    _s_register_internal_types();
-
-    d->nowTimerId = startTimer(1000);
-    d->heartbeatTimerId = startTimer(d->heartbeatInterval);
 }
 
 System::~System()
 {
+}
+
+QString System::name() const
+{
+    return d->name;
 }
 
 QByteArray System::logoData() const
@@ -43,7 +55,7 @@ QByteArray System::logoData() const
     QByteArray data;
 
     QFile file(d->dir + QStringLiteral("/system/logo.png"));
-    if (file.exists() && file.fileTime(QFileDevice::FileModificationTime).secsTo(d->now) < 1 * 60 * 60) {
+    if (false && file.exists() && file.fileTime(QFileDevice::FileModificationTime).secsTo(d->now) < 1 * 60 * 60) {
         if (file.open(QIODevice::ReadOnly)) {
             data = file.readAll();
             file.close();
@@ -64,9 +76,11 @@ QByteArray System::logoData() const
     return data;
 }
 
-QString System::name() const
+bool System::setLogoData(const QByteArray &data)
 {
-    return d->name;
+    bool ok;
+    Data::execQuery("UPDATE Systems SET logo = ?", { data }, &ok);
+    return ok;
 }
 
 QVersionNumber System::version() const
@@ -137,8 +151,10 @@ void System::setHeartbeatInterval(int interval)
         interval = 60000;
 
     if (d->heartbeatInterval != interval) {
-        killTimer(d->heartbeatTimerId);
-        d->heartbeatTimerId = startTimer(interval);
+        if (d->heartbeatTimerId != -1) {
+            killTimer(d->heartbeatTimerId);
+            d->heartbeatTimerId = startTimer(interval);
+        }
         d->heartbeatInterval = interval;
     }
 }
@@ -149,6 +165,83 @@ void System::sync()
         d->getData();
 
     d->syncSettings(true);
+}
+
+bool System::isDatabaseOpen() const
+{
+    if (d->dbConnection.isEmpty())
+        return false;
+    else
+        return QSqlDatabase::database(d->dbConnection).isOpen();
+}
+
+bool System::openDatabase(const QString &driver) const
+{
+    return openDatabase(QSqlDatabase::defaultConnection, d->settings.value("Database/driver", driver).toString());
+}
+
+bool System::openDatabase(const QString &connection, const QString &driver) const
+{
+    d->dbConnection = (!connection.isEmpty() ? connection : QSqlDatabase::defaultConnection);
+    const QString driverName = (!driver.isEmpty() ? driver : d->settings.value("Database/driver").toString());
+
+    QSqlDatabase db;
+    if (!QSqlDatabase::contains(d->dbConnection))
+        db = QSqlDatabase::addDatabase(driverName, d->dbConnection);
+    else
+        db = QSqlDatabase::database(d->dbConnection);
+
+    restoreDatabaseSettings(d->dbConnection);
+
+    return db.open();
+}
+
+void System::closeDatabase()
+{
+    if (!d->dbConnection.isEmpty()) {
+        if (QSqlDatabase::database(d->dbConnection).isOpen())
+            saveDatabaseSettings(d->dbConnection);
+
+        QSqlDatabase::removeDatabase(d->dbConnection);
+        d->dbConnection.clear();
+    }
+}
+
+void System::restoreDatabaseSettings() const
+{
+    restoreDatabaseSettings(d->dbConnection);
+}
+
+void System::restoreDatabaseSettings(const QString &connection) const
+{
+    QSqlDatabase db = QSqlDatabase::database(connection);
+
+    d->settings.beginGroup("Database");
+    db.setHostName(d->settings.value("host", "127.0.0.1").toString());
+    db.setPort(d->settings.value("port").toInt());
+    db.setUserName(d->settings.value("user", "root").toString());
+    db.setPassword(d->settings.value("password").toString());
+    db.setDatabaseName(d->settings.value("database").toString());
+    d->settings.endGroup();
+}
+
+void System::saveDatabaseSettings()
+{
+    saveDatabaseSettings(d->dbConnection);
+}
+
+void System::saveDatabaseSettings(const QString &connection)
+{
+    QSqlDatabase db = QSqlDatabase::database(connection);
+
+    d->settings.beginGroup("Database");
+    d->settings.setValue("host", db.hostName());
+    d->settings.setValue("port", db.port());
+    d->settings.setValue("user", db.userName());
+    d->settings.setValue("password", db.password());
+    d->settings.setValue("database", db.databaseName());
+    d->settings.setValue("driver", db.driverName());
+    d->settings.endGroup();
 }
 
 System *System::instance()

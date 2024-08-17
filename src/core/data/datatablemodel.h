@@ -2,51 +2,96 @@
 #define SYSTEMUS_DATATABLEMODEL_H
 
 #include <SystemusCore/global.h>
-#include <SystemusCore/abstractdatamodel.h>
+#include <SystemusCore/data.h>
+
+#include <QtSql/qsqlquerymodel.h>
 
 namespace Systemus {
 
 class DataTableModelPrivate;
-class SYSTEMUS_CORE_EXPORT DataTableModel : public AbstractDataModel
+class SYSTEMUS_CORE_EXPORT DataTableModel : public QSqlQueryModel
 {
     Q_OBJECT
 
 public:
     explicit DataTableModel(QObject *parent = nullptr);
-    ~DataTableModel();
+    virtual ~DataTableModel();
 
-    QStringList propertyNames() const;
-    void setProperties(const QStringList &names);
-    bool addProperty(const QString &name);
-    bool addProperty(const QString &name, std::function<QVariant (const Data &)> getter, std::function<void(Data *, const QVariant &)> setter = nullptr);
-    template<typename T>
-    bool addProperty(const QString &name, std::function<QVariant (const T &)> getter, std::function<void(T *, const QVariant &)> setter = nullptr);
+    template<typename T> T item() const;
+    Data item() const;
 
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-    bool setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role = Qt::EditRole) override;
+    template<typename T> T item(int row) const;
+    Data item(int row) const;
 
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+    QByteArray className() const;
+    const QMetaObject *classMetaObject() const;
+    QSqlRecord classRecord() const;
+    DataInfo classDataInfo() const;
+    template<typename T> void setClass();
+    void setClass(const Data &data);
+    void setClass(const QByteArray &className);
+    void setClass(const DataInfo &info);
 
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    QStringList properties() const;
+    void setProperties(const QStringList &properties);
+
+    QStringList searchProperties() const;
+    void setSearchProperties(const QStringList &properties);
+
+    QString filter() const;
+    void setFilter(const QString &filter);
+
+    Q_SLOT void search(const QString &query);
+    QString searchQuery();
+    void setSearchQuery(const QString &query);
+
+    void sort(int column, Qt::SortOrder order) override;
+    int sortColumn() const;
+    Qt::SortOrder sortOrder() const;
+    void setSort(int column, Qt::SortOrder order);
+
+    Q_SLOT bool select();
+
+    QByteArrayList linkedClassNames() const;
+    template<typename T> void linkTo();
+    template<typename T> void linkTo(const QString &foreignProperty);
+    template<typename T> void linkTo(const QString &foreignProperty, const QString &indexProperty);
+    void linkTo(const QByteArray &className);
+    void linkTo(const QByteArray &className, const QString &foreignProperty);
+    void linkTo(const QByteArray &className, const QString &foreignProperty, const QString &indexProperty);
 
 protected:
-    bool isCustomized() const override;
+    Data *itemPointer(int row) const;
+
+    virtual QString selectStement() const;
+
+private:
+    QScopedPointer<DataTableModelPrivate> d_ptr;
 };
 
 template<typename T>
-bool DataTableModel::addProperty(const QString &name, std::function<QVariant (const T &)> getter, std::function<void (T *, const QVariant &)> setter)
-{
-    return addProperty(name,
-        [&getter](const Data &data) {
-            return getter(data.to<T>());
-        },
-        [&setter](Data *data, const QVariant &value) {
-            T d = data->to<T>();
-            setter(&d, value);
-            *data = d;
-        });
-}
+T DataTableModel::item() const
+{ return item().to<T>(); }
+
+template<typename T>
+T DataTableModel::item(int row) const
+{ return item(row).to<T>(); }
+
+template<typename T>
+void DataTableModel::setClass()
+{ setClass(DataInfo::fromType<T>()); }
+
+template<typename T>
+inline void DataTableModel::linkTo()
+{ linkTo(T::staticMetaObject.className()); }
+
+template<typename T>
+inline void DataTableModel::linkTo(const QString &foreignProperty)
+{ linkTo(T::staticMetaObject.className(), foreignProperty); }
+
+template<typename T>
+inline void DataTableModel::linkTo(const QString &foreignProperty, const QString &indexProperty)
+{ linkTo(T::staticMetaObject.className(), foreignProperty, indexProperty); }
 
 }
 

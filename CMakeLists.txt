@@ -10,10 +10,10 @@ set(SYSTEMUS_VERSION_CODE 0)
 
 set(Systemus_LOCALES fr)
 
-option(Systemus_BUILD_TOOL         "" OFF)
-option(Systemus_BUILD_WIDGETS      "" OFF)
-option(Systemus_BUILD_TEST         "" OFF)
-option(Systemus_BUILD_TRANSLATIONS "" OFF)
+set(Systemus_BUILD_TOOL         "" OFF CACHE BOOL "Build tool")
+set(Systemus_BUILD_WIDGETS      "" OFF CACHE BOOL "Build Widgets module")
+set(Systemus_BUILD_TEST         "" OFF CACHE BOOL "Build tests")
+set(Systemus_BUILD_TRANSLATIONS "" OFF CACHE BOOL "Build translations")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 

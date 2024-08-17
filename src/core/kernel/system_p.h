@@ -46,6 +46,8 @@ public:
     int heartbeatInterval;
     int heartbeatTimerId;
 
+    QString dbConnection;
+
 private:
     enum SettingType {
         Unknown = -1,

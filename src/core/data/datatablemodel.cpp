@@ -1,12 +1,15 @@
 #include "datatablemodel.h"
 #include "datatablemodel_p.h"
 
+#include <SystemusCore/namespace.h>
+
 #include <QtCore/qmetaobject.h>
 
 namespace Systemus {
 
 DataTableModel::DataTableModel(QObject *parent) :
-    AbstractDataModel(new DataTableModelPrivate(this), parent)
+    QSqlQueryModel(parent),
+    d_ptr(new DataTableModelPrivate(this))
 {
 }
 
@@ -14,211 +17,225 @@ DataTableModel::~DataTableModel()
 {
 }
 
-QStringList DataTableModel::propertyNames() const
+Data DataTableModel::item() const
 {
-    S_D(const DataTableModel);
-    QStringList properties;
-    for (const DataTableProperty &property : d->properties)
-        properties.append(property.name());
-    return properties;
+    return d_ptr->classInfo.newData();
 }
 
-void DataTableModel::setProperties(const QStringList &names)
+Data DataTableModel::item(int row) const
 {
-    S_D(DataTableModel);
-    beginResetModel();
+    return *d_ptr->item(row);
+}
 
-    d->properties.clear();
-    for (const QString &name : names) {
-        const int index = d->info.fieldPropertyIndex(name);
-        if (index >= 0)
-            d->properties.append(DataTableProperty(index, d));
+QByteArray DataTableModel::className() const
+{
+    return d_ptr->classInfo.metaObject()->className();
+}
+
+const QMetaObject *DataTableModel::classMetaObject() const
+{
+    return d_ptr->classInfo.metaObject();
+}
+
+QSqlRecord DataTableModel::classRecord() const
+{
+    return d_ptr->classInfo.record();
+}
+
+DataInfo DataTableModel::classDataInfo() const
+{
+    return d_ptr->classInfo;
+}
+
+void DataTableModel::setClass(const Data &data)
+{
+    d_ptr->classInfo = data.info();
+}
+
+void DataTableModel::setClass(const QByteArray &className)
+{
+    d_ptr->classInfo = DataInfo::fromName(className);
+}
+
+void DataTableModel::setClass(const DataInfo &info)
+{
+    d_ptr->classInfo = info;
+}
+
+QStringList DataTableModel::properties() const
+{
+    return d_ptr->properties;
+}
+
+void DataTableModel::setProperties(const QStringList &properties)
+{
+    d_ptr->properties = properties;
+}
+
+QStringList DataTableModel::searchProperties() const
+{
+    return d_ptr->searchProperties;
+}
+
+void DataTableModel::setSearchProperties(const QStringList &properties)
+{
+    d_ptr->searchProperties = properties;
+}
+
+QString DataTableModel::filter() const
+{
+    return d_ptr->filter();
+}
+
+void DataTableModel::setFilter(const QString &filter)
+{
+    d_ptr->setFilter(filter);
+}
+
+void DataTableModel::search(const QString &query)
+{
+    d_ptr->setSearchQuery(query);
+    select();
+}
+
+QString DataTableModel::searchQuery()
+{
+    return d_ptr->searchQuery();
+}
+
+void DataTableModel::setSearchQuery(const QString &query)
+{
+    d_ptr->setSearchQuery(query);
+}
+
+void DataTableModel::sort(int column, Qt::SortOrder order)
+{
+    d_ptr->setSort(column, order);
+    select();
+}
+
+int DataTableModel::sortColumn() const
+{
+    return d_ptr->sortColumn();
+}
+
+Qt::SortOrder DataTableModel::sortOrder() const
+{
+    return d_ptr->sortOrder();
+}
+
+void DataTableModel::setSort(int column, Qt::SortOrder order)
+{
+    d_ptr->setSort(column, order);
+}
+
+bool DataTableModel::select()
+{
+    bool ok;
+    QSqlQueryModel::setQuery(Data::execCachedQuery(selectStement(), &ok));
+    return ok;
+}
+
+QByteArrayList DataTableModel::linkedClassNames() const
+{
+    QByteArrayList names;
+    for (const DataTableModelLink &link : d_ptr->links)
+        names.append(link.className);
+    return names;
+}
+
+void DataTableModel::linkTo(const QByteArray &className)
+{
+    DataTableModelLink link;
+    link.className = className;
+    d_ptr->links.append(link);
+}
+
+void DataTableModel::linkTo(const QByteArray &className, const QString &foreignProperty)
+{
+    DataTableModelLink link;
+    link.className = className;
+    link.foreignProperty = foreignProperty;
+    d_ptr->links.append(link);
+}
+
+void DataTableModel::linkTo(const QByteArray &className, const QString &foreignProperty, const QString &indexProperty)
+{
+    DataTableModelLink link;
+    link.className = className;
+    link.foreignProperty = foreignProperty;
+    link.indexProperty = indexProperty;
+    d_ptr->links.append(link);
+}
+
+Data *DataTableModel::itemPointer(int row) const
+{
+    return d_ptr->item(row);
+}
+
+QString DataTableModel::selectStement() const
+{
+    QString statement = "SELECT";
+
+    const int propertyCount = d_ptr->properties.size();
+    for (int i(0); i < propertyCount; ++i) {
+        statement.append(' ' + (d_ptr->properties.at(i)));
+        if (i < propertyCount - 1)
+            statement.append(',');
     }
 
-    endResetModel();
-}
+    const QString join = QStringLiteral("INNER JOIN %1 ON (%1.%2 = %3.%4)");
+    for (const DataTableModelLink &link : d_ptr->links) {
+        const DataInfo foreignInfo = DataInfo::fromName(link.className);
 
-bool DataTableModel::addProperty(const QString &name)
-{
-    S_D(DataTableModel);
-    const int index = d->info.fieldPropertyIndex(name);
-
-    if (index >= 0) {
-        beginResetModel();
-        d->properties.append(DataTableProperty(index, d));
-        endResetModel();
-        return true;
-    } else
-        return false;
-}
-
-bool DataTableModel::addProperty(const QString &name, std::function<QVariant (const Data &)> getter, std::function<void (Data *, const QVariant &)> setter)
-{
-    S_D(DataTableModel);
-    d->properties.append(DataTableProperty(name, d, getter, setter));
-    return true;
-}
-
-QVariant DataTableModel::headerData(int section, Qt::Orientation orientation, int role) const
-{
-    S_D(const DataTableModel);
-
-    switch (role) {
-    case Qt::DisplayRole:
-    case Qt::EditRole:
-        if (orientation == Qt::Horizontal)
-            return d->columnName(section);
+        QString foreignField;
+        if (!link.foreignProperty.isEmpty())
+            foreignField = fieldNameFromPropertyName(link.foreignProperty);
         else
-            return d->itemNumber(section);
+            foreignField = foreignInfo.foreignFieldName();
 
-    default:
-        return AbstractDataModel::headerData(section, orientation, role);
+        QString idField;
+        if (!link.indexProperty.isEmpty())
+            idField = fieldNameFromPropertyName(link.indexProperty);
+        else
+            idField = foreignInfo.idFieldName();
+
+        statement.append(join.arg(foreignInfo.tableName()).arg(foreignField).arg(d_ptr->classInfo.tableName()).arg(idField));
     }
-}
 
-bool DataTableModel::setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role)
-{
-    S_D(DataTableModel);
+    if (d_ptr->hasWhereClause())
+        statement.append(' ' + d_ptr->whereClause());
 
-    if (orientation == Qt::Vertical)
-        return setHeaderData(section, orientation, value, role);
+    if (d_ptr->hasGroupByClause())
+        statement.append(' ' + d_ptr->groupByClause());
 
-    switch (role) {
-    case Qt::DisplayRole:
-    case Qt::EditRole:
-        d->headerData.insert(section, value);
-        return false;
+    if (d_ptr->hasOrderByClause())
+        statement.append(' ' + d_ptr->orderByClause());
 
-    default:
-        return AbstractDataModel::setHeaderData(section, orientation, role);
-    }
-}
+    if (d_ptr->hasLimitOffsetClause())
+        statement.append(' ' + d_ptr->limitOffsetClause());
 
-QVariant DataTableModel::data(const QModelIndex &index, int role) const
-{
-    S_D(DataTableModel);
-    switch (role) {
-    case Qt::DisplayRole:
-    case Qt::EditRole:
-        return d->itemData(index.row(), index.column());
-
-    default:
-        return QVariant();
-    }
-}
-
-bool DataTableModel::setData(const QModelIndex &index, const QVariant &value, int role)
-{
-    S_D(DataTableModel);
-    switch (role) {
-    case Qt::DisplayRole:
-    case Qt::EditRole:
-        return d->setItemData(index.row(), index.column(), value);
-
-    default:
-        return AbstractDataModel::setData(index, value, role);
-    }
-}
-
-int DataTableModel::columnCount(const QModelIndex &parent) const
-{
-    S_D(const DataTableModel);
-    return (!parent.isValid() ? d->columnCount() : 0);
-}
-
-bool DataTableModel::isCustomized() const
-{
-    S_D(const DataTableModel);
-    return !d->properties.isEmpty();
+    return statement;
 }
 
 DataTableModelPrivate::DataTableModelPrivate(DataTableModel *q) :
-    AbstractDataModelPrivate(q)
+    q_ptr(q)
 {
 }
 
-QString DataTableModelPrivate::columnName(int index) const
+Data *DataTableModelPrivate::item(int index) const
 {
-    if (headerData.contains(index))
-        return headerData.value(index).toString();
-    else if (properties.size() > index)
-        return properties.at(index).name();
-    else
-        return info.fieldPropertyName(index);
-}
+    if (!m_items.contains(index)) {
+        const QMetaType type = QMetaType::fromName(classInfo.metaObject()->className());
+        if (!type.isValid())
+            return nullptr;
 
-int DataTableModelPrivate::columnCount() const
-{
-    return (!properties.isEmpty() ? properties.size() : info.count());
-}
-int DataTableModelPrivate::itemNumber(int index) const
-{
-    return (_page > 1 ? ((_page - 1) * _itemsPerPage) : 1) + index;
-}
-
-QVariant DataTableModelPrivate::itemData(int row, int propertyIndex) const
-{
-    if (properties.size() > propertyIndex)
-        return properties.at(propertyIndex).value(row);
-    else
-        return items.at(row).property(propertyName(propertyIndex));
-}
-
-bool DataTableModelPrivate::setItemData(int row, int propertyIndex, const QVariant &data)
-{
-    if (properties.size() > row) {
-        properties[row].setValue(row, data);
-        return true;
+        Data *data = static_cast<Data *>(type.create());
+        data->fill(q_ptr->record(index), true);
+        return (m_items.insert(index, data) ? data : nullptr);
+    } else {
+        return m_items.object(index);
     }
-
-    this->items[row].setProperty(propertyName(propertyIndex), data);
-    return true;
-}
-
-QString DataTableModelPrivate::propertyName(int index) const
-{
-    return info.fieldPropertyName(index);
-}
-
-DataTableProperty::DataTableProperty(const QString &name, DataTableModelPrivate *model, std::function<QVariant (const Data &)> getter) :
-    Systemus::DataTableProperty(name, model, getter, nullptr)
-{
-}
-
-DataTableProperty::DataTableProperty(const QString &name, DataTableModelPrivate *model, std::function<QVariant (const Data &)> getter, std::function<void (Data *, const QVariant &)> setter) :
-    _name(new QString(name)),
-    _getter(getter),
-    _setter(setter),
-    _index(0),
-    _model(model)
-{
-}
-
-DataTableProperty::DataTableProperty(int index, DataTableModelPrivate *model) :
-    _name(nullptr),
-    _getter(nullptr),
-    _index(index),
-    _model(model)
-{
-}
-
-QString DataTableProperty::name() const
-{
-    return (_name ? *_name : _model->propertyName(_index));
-}
-
-QVariant DataTableProperty::value(int index) const
-{
-    const Data data = _model->items.at(index);
-    return (_getter ? _getter(data) : data.property(_model->propertyName(_index)));
-}
-
-void DataTableProperty::setValue(int index, const QVariant &value)
-{
-    Data *data = &_model->items[index];
-
-    if (_setter)
-        _setter(data, value);
 }
 
 }

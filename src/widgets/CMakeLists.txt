@@ -1,4 +1,4 @@
-systemus_add_library(widgets
+systemus_add_library(Widgets
     NAME   Widgets
     SYSTEM Systemus
     resources/systemus_widgets_res.qrc
@@ -7,9 +7,9 @@ systemus_add_library(widgets
 add_subdirectory(kernel)
 add_subdirectory(user)
 
-target_link_libraries(widgets PUBLIC Qt::Widgets core)
+target_link_libraries(Widgets PUBLIC Qt::Widgets Core)
 
-install(TARGETS widgets
+install(TARGETS Widgets
     EXPORT SystemusWidgetsTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

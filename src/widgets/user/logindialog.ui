@@ -45,7 +45,7 @@
    <item>
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="loginPage">
       <layout class="QGridLayout" name="gridLayout">
@@ -278,7 +278,7 @@
        <item>
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="generalTab">
           <attribute name="icon">
@@ -314,7 +314,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>259</width>
+                <width>604</width>
                 <height>237</height>
                </rect>
               </property>
@@ -502,8 +502,8 @@
               <property name="geometry">
                <rect>
                 <x>0</x>
-                <y>0</y>
-                <width>258</width>
+                <y>-57</y>
+                <width>602</width>
                 <height>201</height>
                </rect>
               </property>

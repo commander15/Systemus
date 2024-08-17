@@ -19,12 +19,4 @@
 #define S_D(Class) Class##Private *d = static_cast<Class##Private *>(d_ptr.get());
 #define S_Q(Class) Class *q = static_cast<Class *>(q_ptr);
 
-namespace Systemus {
-
-SYSTEMUS_CORE_EXPORT void init(int argc, char *argv[]);
-
-}
-
-SYSTEMUS_CORE_EXPORT void _s_register_internal_types();
-
 #endif // SYSTEMUS_CORE_GLOBAL_H

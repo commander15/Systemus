@@ -1,4 +1,4 @@
-target_headers(widgets
+target_headers(Widgets
     PUBLIC
         global.h
         interfaceholder.h
@@ -21,7 +21,7 @@ target_headers(widgets
         #filterwidgetimpl_p.h
 )
 
-target_sources(widgets
+target_sources(Widgets
     PRIVATE
         interfaceholder.cpp
         interfaceserver.cpp
