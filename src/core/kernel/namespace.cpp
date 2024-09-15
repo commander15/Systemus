@@ -1,28 +1,72 @@
 #include "namespace.h"
 #include "namespace_p.h"
 
+#include <SystemusCore/settings.h>
 #include <SystemusCore/orm.h>
-#include <SystemusCore/system.h>
-#include <SystemusCore/user.h>
-#include <SystemusCore/role.h>
-#include <SystemusCore/group.h>
-#include <SystemusCore/privilege.h>
-#include <SystemusCore/permission.h>
+#include <SystemusCore/private/debug_p.h>
 
-#include <QtSql/qsqlquery.h>
-#include <QtSql/qsqlrecord.h>
 #include <QtSql/qsqlfield.h>
+#include <QtSql/qsqlquery.h>
 #include <QtSql/qsqlerror.h>
 #include <QtSql/qsqldriver.h>
 
-#include <QtCore/qmetaobject.h>
-#include <QtCore/qregularexpression.h>
-
 namespace Systemus {
 
-void initCore(int argc, char *argv[])
+void initCore(QCoreApplication *app, QSettings *settings, const QString &dbConnection)
 {
-    Orm::init(argc, argv);
+    if (settings)
+        Settings::setSettings("Systemus", settings);
+
+    if (!dbConnection.isEmpty())
+        SystemusPrivate::dbConnection = dbConnection;
+
+    Orm::init();
+    Q_UNUSED(app);
+}
+
+bool beginTransaction()
+{
+    return QSqlDatabase::database(SystemusPrivate::dbConnection).transaction();
+}
+
+bool commitTransaction()
+{
+    return QSqlDatabase::database(SystemusPrivate::dbConnection).commit();
+}
+
+bool rollbackTransaction()
+{
+    return QSqlDatabase::database(SystemusPrivate::dbConnection).rollback();
+}
+
+QString sqlStatement(int type, const QString &tableName, const QSqlRecord &record, bool prepared)
+{
+    return sqlDriver()->sqlStatement(static_cast<QSqlDriver::StatementType>(type), tableName, record, prepared);
+}
+
+QString escapeTableName(const QString &tableName)
+{
+    return sqlDriver()->escapeIdentifier(tableName, QSqlDriver::TableName);
+}
+
+QString escapeFieldName(const QString &fieldName)
+{
+    if (fieldName == '*')
+        return fieldName;
+    else
+        return sqlDriver()->escapeIdentifier(fieldName, QSqlDriver::FieldName);
+}
+
+QString escapeIdentifier(const QString &identifier, int type)
+{
+    return sqlDriver()->escapeIdentifier(identifier, static_cast<QSqlDriver::IdentifierType>(type));
+}
+
+QString formatValue(const QVariant &value)
+{
+    QSqlField field(QString(), value.metaType());
+    field.setValue(value);
+    return sqlDriver()->formatValue(field, true);
 }
 
 QSqlQuery exec(const QString &query, bool *ok, QSqlError *error)
@@ -92,13 +136,18 @@ void execQuery(QSqlQuery &query, bool cache, bool *ok, QSqlError *error)
 {
     query.setForwardOnly(!cache);
 
-    if (query.exec()) {
-        if (ok)
-            *ok = true;
-    } else {
-        if (ok)
-            *ok = false;
+    const bool success = query.exec();
+#ifdef QT_DEBUG
+    systemusSqlInfo() << query.executedQuery();
+#endif
 
+    if (ok)
+        *ok = success;
+
+    if (!success) {
+#ifdef QT_DEBUG
+        systemusSqlWarning() << query.lastError().databaseText();
+#endif
         if (error)
             *error = query.lastError();
     }

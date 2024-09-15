@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>Database</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -103,16 +103,6 @@
   <tabstop>databaseInput</tabstop>
   <tabstop>testButton</tabstop>
   <tabstop>saveButton</tabstop>
-  <tabstop>generalTabScrollArea</tabstop>
-  <tabstop>configurationLoadingButton</tabstop>
-  <tabstop>databaseTabScrollArea</tabstop>
-  <tabstop>databaseHostInput</tabstop>
-  <tabstop>databasePortInput</tabstop>
-  <tabstop>databaseUserInput</tabstop>
-  <tabstop>databasePasswordInput</tabstop>
-  <tabstop>databaseNameInput</tabstop>
-  <tabstop>databaseTestButton</tabstop>
-  <tabstop>databaseSaveButton</tabstop>
  </tabstops>
  <resources/>
  <connections/>

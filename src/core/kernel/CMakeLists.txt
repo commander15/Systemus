@@ -5,9 +5,14 @@ target_headers(Core
         systemus.h global.h config.h
         namespace.h
         system.h
+        settings.h
+        data.h
     PRIVATE
         debug_p.h
+        namespace_p.h
         system_p.h
+        settings_p.h
+        data_p.h
 )
 
 target_sources(Core
@@ -15,4 +20,6 @@ target_sources(Core
         debug.cpp
         namespace.cpp
         system.cpp
+        settings.cpp
+        data.cpp
 )

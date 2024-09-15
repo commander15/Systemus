@@ -1,4 +1,0 @@
-#ifndef INTERFACE_STACK_P_H
-#define INTERFACE_STACK_P_H
-
-#endif // INTERFACE_STACK_P_H

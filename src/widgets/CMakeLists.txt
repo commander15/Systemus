@@ -5,7 +5,11 @@ systemus_add_library(Widgets
 )
 
 add_subdirectory(kernel)
-add_subdirectory(user)
+#add_subdirectory(window)
+add_subdirectory(interface)
+add_subdirectory(data)
+add_subdirectory(container)
+#add_subdirectory(view)
 
 target_link_libraries(Widgets PUBLIC Qt::Widgets Core)
 

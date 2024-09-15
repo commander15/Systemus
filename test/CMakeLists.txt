@@ -7,4 +7,6 @@ find_package(GTest REQUIRED)
 
 add_compile_definitions(TESTDATA_DIR="${TESTDATA_DIR}")
 
+include_directories(include)
+
 add_subdirectory(core)

@@ -1,42 +1,36 @@
 #include "system.h"
 #include "system_p.h"
 
-#include <SystemusCore/authenticator.h>
-#include <SystemusCore/data.h>
-#include <SystemusCore/user.h>
+#include <SystemusCore/namespace.h>
+#include <SystemusCore/settings.h>
+#include <SystemusCore/private/namespace_p.h>
 
+#include <QtSql/qsqlquery.h>
+#include <QtSql/qsqlrecord.h>
 #include <QtSql/qsqlfield.h>
 #include <QtSql/qsqldriver.h>
 
+#include <QtCore/qcoreapplication.h>
+#include <QtCore/qsettings.h>
+#include <QtCore/qcoreevent.h>
 #include <QtCore/qstandardpaths.h>
 #include <QtCore/qdir.h>
 #include <QtCore/qfile.h>
+#include <QtCore/qtimer.h>
 
 namespace Systemus {
 
 System::System(QObject *parent) :
     QObject(parent),
-    d(new SystemPrivate(this))
+    d_ptr(new SystemPrivate(this))
 {
-    connect(d.get(), &SystemPrivate::onlineStateChanged, this, [this](bool online) {
-        emit onlineStateChanged(online);
-        if (online) {
-            emit this->online();
+    S_D(System);
 
-            if (d->nowTimerId == -1)
-                d->nowTimerId = startTimer(1000);
-
-            if (d->heartbeatTimerId == -1)
-                d->heartbeatTimerId = startTimer(d->heartbeatInterval);
-        } else {
-            emit this->offline();
-
-            if (d->heartbeatTimerId != -1) {
-                killTimer(d->heartbeatTimerId);
-                d->heartbeatTimerId = -1;
-            }
-        }
-    });
+    QSqlDatabase db = QSqlDatabase::database(SystemusPrivate::dbConnection, false);
+    if (db.isOpen()) {
+        d->getProperties();
+        d->getTime();
+    }
 
     QTimer::singleShot(0, this, &System::sync);
 }
@@ -45,407 +39,313 @@ System::~System()
 {
 }
 
-QString System::name() const
-{
-    return d->name;
-}
-
 QByteArray System::logoData() const
 {
-    QByteArray data;
+    S_D(const System);
 
     QFile file(d->dir + QStringLiteral("/system/logo.png"));
-    if (false && file.exists() && file.fileTime(QFileDevice::FileModificationTime).secsTo(d->now) < 1 * 60 * 60) {
-        if (file.open(QIODevice::ReadOnly)) {
-            data = file.readAll();
-            file.close();
-        }
-    } else {
-        bool ok;
-        QSqlQuery query = Data::execQuery(QStringLiteral("SELECT logo FROM Systems LIMIT 1"), &ok);
-        if (ok && query.next())
-            data = query.value(0).toByteArray();
-
+    if (!file.exists()) {
         if (file.open(QIODevice::WriteOnly)) {
-            file.write(data);
+            file.write(d->logoData);
             file.flush();
             file.close();
         }
     }
 
-    return data;
+    return d->logoData;
 }
 
-bool System::setLogoData(const QByteArray &data)
+void System::setLogoData(const QByteArray &data)
 {
-    bool ok;
-    Data::execQuery("UPDATE Systems SET logo = ?", { data }, &ok);
-    return ok;
+    S_D(System);
+    d->logoData = data;
+    d->markPropertyChange(SystemPrivate::LogoProperty);
+}
+
+QString System::name() const
+{
+    return d_ptr->name;
+}
+
+void System::setName(const QString &name)
+{
+    S_D(System);
+    if (d->name != name) {
+        d->name = name;
+        d->markPropertyChange(SystemPrivate::NameProperty);
+    }
 }
 
 QVersionNumber System::version() const
 {
-    return d->version;
+    return d_ptr->version;
 }
 
-QString System::versionString() const
+void System::setVersion(const QVersionNumber &version)
 {
-    return d->version.toString();
+    if (d_ptr->version != version) {
+        d_ptr->version = version;
+    }
 }
 
 QDate System::currentDate() const
 {
-    return d->now.date();
+    return d_ptr->now.date();
 }
 
 QTime System::currentTime() const
 {
-    return d->now.time();
+    return d_ptr->now.time();
 }
 
 QDateTime System::now() const
 {
-    return d->now;
-}
-
-bool System::hasSetting(const QString &name) const
-{
-    return d->settings.contains(d->settingKey(name));
-}
-
-QVariant System::setting(const QString &name) const
-{
-    return d->settings.value(d->settingKey(name));
-}
-
-QVariant System::setting(const QString &name, const QVariant &defaultValue) const
-{
-    return d->settings.value(d->settingKey(name), defaultValue);
-}
-
-void System::setSetting(const QString &name, const QVariant &value)
-{
-    if (!d->settings.contains(d->settingKey(name)) || d->settings.value(d->settingKey(name)) != value)
-        d->settings.setValue(d->settingKey(name), value);
-    d->dirtySettingKeys.append(name);
-}
-
-User System::user() const
-{
-    return Authenticator::instance()->loggedUser();
-}
-
-bool System::isOnline() const
-{
-    return d->isOnline();
+    return d_ptr->now;
 }
 
 int System::heartbeatInterval() const
 {
+    S_D(const System);
     return d->heartbeatInterval;
 }
 
 void System::setHeartbeatInterval(int interval)
 {
-    if (interval <= 0)
-        interval = 60000;
+    S_D(System);
+
+    if (interval < 500)
+        interval = 500;
 
     if (d->heartbeatInterval != interval) {
-        if (d->heartbeatTimerId != -1) {
-            killTimer(d->heartbeatTimerId);
-            d->heartbeatTimerId = startTimer(interval);
+        bool startTimers = false;
+        if (d->timersActive()) {
+            d->stopTimers();
+            startTimers = true;
         }
+
         d->heartbeatInterval = interval;
+
+        if (startTimers)
+            d->startTimers();
     }
 }
 
 void System::sync()
 {
-    if (d->name.isEmpty())
-        d->getData();
+    S_D(System);
 
-    d->syncSettings(true);
-}
+    if (!d->timersActive())
+        d->startTimers();
 
-bool System::isDatabaseOpen() const
-{
-    if (d->dbConnection.isEmpty())
-        return false;
-    else
-        return QSqlDatabase::database(d->dbConnection).isOpen();
-}
+    if (d->hasPendingPropertyChanges()) {
+        QList<SystemPrivate::SystemProperty> properties;
+        if (d->commitPropertyChanges(&properties)) {
+            for (SystemPrivate::SystemProperty property : std::as_const(properties)) {
+                switch (property) {
+                case Systemus::SystemPrivate::LogoProperty:
+                    emit logoDataChanged(d->logoData);
+                    break;
 
-bool System::openDatabase(const QString &driver) const
-{
-    return openDatabase(QSqlDatabase::defaultConnection, d->settings.value("Database/driver", driver).toString());
-}
+                case Systemus::SystemPrivate::NameProperty:
+                    emit nameChanged(d->name);
+                    break;
 
-bool System::openDatabase(const QString &connection, const QString &driver) const
-{
-    d->dbConnection = (!connection.isEmpty() ? connection : QSqlDatabase::defaultConnection);
-    const QString driverName = (!driver.isEmpty() ? driver : d->settings.value("Database/driver").toString());
-
-    QSqlDatabase db;
-    if (!QSqlDatabase::contains(d->dbConnection))
-        db = QSqlDatabase::addDatabase(driverName, d->dbConnection);
-    else
-        db = QSqlDatabase::database(d->dbConnection);
-
-    restoreDatabaseSettings(d->dbConnection);
-
-    return db.open();
-}
-
-void System::closeDatabase()
-{
-    if (!d->dbConnection.isEmpty()) {
-        if (QSqlDatabase::database(d->dbConnection).isOpen())
-            saveDatabaseSettings(d->dbConnection);
-
-        QSqlDatabase::removeDatabase(d->dbConnection);
-        d->dbConnection.clear();
+                case Systemus::SystemPrivate::VersionProperty:
+                    emit versionChanged(d->version);
+                    break;
+                }
+            }
+        }
+    } else if (d->name.isEmpty()) {
+        if (d->getProperties() && d->getTime()) {
+            d->startTimers();
+            emit ready();
+        }
     }
-}
 
-void System::restoreDatabaseSettings() const
-{
-    restoreDatabaseSettings(d->dbConnection);
-}
+    Settings::instance()->sync();
 
-void System::restoreDatabaseSettings(const QString &connection) const
-{
-    QSqlDatabase db = QSqlDatabase::database(connection);
-
-    d->settings.beginGroup("Database");
-    db.setHostName(d->settings.value("host", "127.0.0.1").toString());
-    db.setPort(d->settings.value("port").toInt());
-    db.setUserName(d->settings.value("user", "root").toString());
-    db.setPassword(d->settings.value("password").toString());
-    db.setDatabaseName(d->settings.value("database").toString());
-    d->settings.endGroup();
-}
-
-void System::saveDatabaseSettings()
-{
-    saveDatabaseSettings(d->dbConnection);
-}
-
-void System::saveDatabaseSettings(const QString &connection)
-{
-    QSqlDatabase db = QSqlDatabase::database(connection);
-
-    d->settings.beginGroup("Database");
-    d->settings.setValue("host", db.hostName());
-    d->settings.setValue("port", db.port());
-    d->settings.setValue("user", db.userName());
-    d->settings.setValue("password", db.password());
-    d->settings.setValue("database", db.databaseName());
-    d->settings.setValue("driver", db.driverName());
-    d->settings.endGroup();
+    emit notify();
 }
 
 System *System::instance()
 {
-    if (!_instance)
-        _instance.reset(new System());
-    return _instance.get();
+    if (!s_instance)
+        s_instance.reset(new System());
+    return s_instance.get();
 }
 
 void System::timerEvent(QTimerEvent *event)
 {
-    if (event->timerId() == d->nowTimerId) {
-        d->now = d->now.addSecs(1);
-        event->accept();
-    } else if (event->timerId() == d->heartbeatTimerId) {
-        sync();
-        event->accept();
-    } else {
-        QObject::timerEvent(event);
-    }
+    S_D(System);
+    d->processTimerEvent(event);
 }
 
-void System::setUser(const User &user)
+QString System::versionString() const
 {
-    emit userChanged(user);
+    return d_ptr->version.toString();
 }
 
-QScopedPointer<System> System::_instance;
+void System::setVersionString(const QString &version)
+{
+    S_D(System);
+    d->version = QVersionNumber::fromString(version);
+    d->markPropertyChange(SystemPrivate::VersionProperty);
+}
+
+QScopedPointer<System> System::s_instance;
 
 SystemPrivate::SystemPrivate(System *q) :
     q(q),
-    now(QDateTime::currentDateTime()),
-    nowTimerId(-1),
-    dir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/Systemus"),
-#ifdef QT_DEBUG
-    settings(dir + QStringLiteral("/system/systemus.ini"), QSettings::IniFormat),
-#endif
     heartbeatInterval(60000),
-    heartbeatTimerId(-1),
-    _online(false)
+    dir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/Systemus"),
+    m_heartbeatTimerId(-1),
+    m_nowTimerId(-1)
 {
-    settings.beginGroup("System");
-    name = settings.value("name").toString();
-    version = QVersionNumber::fromString(settings.value("version").toString());
-    settings.endGroup();
-
     QDir systemusDir(dir);
     if (!systemusDir.exists("system"))
         systemusDir.mkpath("system");
-
-    QTimer::singleShot(0, this, [=] { setOnline(!name.isEmpty()); });
 }
 
-bool SystemPrivate::isOnline() const
+bool SystemPrivate::getProperties()
 {
-    return _online;
-}
+    QString statement = Systemus::sqlStatement(QSqlDriver::SelectStatement, systemTable(), systemRecord(), false);
 
-void SystemPrivate::setOnline(bool online)
-{
-    if (_online != online) {
-        _online = online;
-        emit onlineStateChanged(online);
+    bool ok = false;
+    QSqlQuery query = Systemus::exec(statement, &ok);
+
+    if (ok && query.next()) {
+        logoData = query.value(0).toByteArray();
+        name = query.value(1).toString();
+        version = QVersionNumber::fromString(query.value(2).toString());
+
+        QSettings *settings = Settings::instance()->settings();
+        if (settings) {
+            settings->beginGroup("System");
+            settings->setValue("name", name);
+            settings->setValue("version", version.toString());
+            settings->endGroup();
+        }
+
+        return true;
+    } else {
+        return false;
     }
 }
 
-void SystemPrivate::update()
+bool SystemPrivate::hasPendingPropertyChanges() const
 {
-    setOnline(getData());
+    return !m_dirtyProperties.isEmpty();
 }
 
-bool SystemPrivate::getData()
+void SystemPrivate::markPropertyChange(SystemProperty property, bool changed)
 {
-    bool ok;
-    QSqlQuery query = Data::execQuery("SELECT name, version FROM Systems ORDER BY id DESC LIMIT 1", &ok);
+    if (changed && !m_dirtyProperties.contains(property))
+        m_dirtyProperties.append(property);
+    else if (!changed && m_dirtyProperties.contains(property))
+        m_dirtyProperties.removeOne(property);
+}
+
+bool SystemPrivate::commitPropertyChanges(QList<SystemProperty> *properties)
+{
+    QSqlRecord record = systemRecord();
+
+    if (m_dirtyProperties.contains(LogoProperty))
+        record.setValue("logo", logoData);
+    else
+        record.remove(record.indexOf("logo"));
+
+    if (m_dirtyProperties.contains(NameProperty))
+        record.setValue("name", name);
+    else
+        record.remove(record.indexOf("name"));
+
+    if (m_dirtyProperties.contains(VersionProperty))
+        record.setValue("version", version.toString());
+    else
+        record.remove(record.indexOf("version"));
+
+    QString statement = Systemus::sqlStatement(QSqlDriver::UpdateStatement, systemTable(), record, false);
+    bool ok = false;
+
+    QSqlQuery query = Systemus::exec(statement + " LIMIT 1", &ok);
 
     if (ok && query.next()) {
         name = query.value(0).toString();
         version = QVersionNumber::fromString(query.value(1).toString());
 
-        settings.beginGroup("System");
-        settings.setValue("name", name);
-        settings.setValue("version", version.toString());
-        settings.endGroup();
+        QSettings *settings = Settings::instance()->settings();
+        if (settings) {
+            settings->beginGroup("System");
+            settings->setValue("name", name);
+            settings->setValue("version", version.toString());
+            settings->endGroup();
+        }
+
+        if (properties)
+            properties->swap(m_dirtyProperties);
+        else
+            m_dirtyProperties.clear();
     }
 
     return ok;
 }
 
-bool SystemPrivate::syncSettings(bool force)
+bool SystemPrivate::getTime()
 {
-    const QString table = QStringLiteral("SystemSettings");
-    QSqlRecord record;
-    record.append(QSqlField("id", QMetaType::fromType<int>(), table));
-    record.append(QSqlField("name", QMetaType::fromType<QString>(), table));
-    record.append(QSqlField("value", QMetaType::fromType<QString>(), table));
-    record.append(QSqlField("type", QMetaType::fromType<int>(), table));
-
     bool ok = false;
-
-    settings.beginGroup(qApp->applicationName());
-
-    if (settingKeyIds.isEmpty() || dirtySettingKeys.isEmpty()) {
-        QString statement = Data::driver()->sqlStatement(QSqlDriver::SelectStatement, table, record, false);
-
-        QSqlQuery query = Data::execQuery(statement, &ok);
-        if (ok) {
-            settingKeyIds.clear();
-            while (query.next()) {
-                const QString name = query.value(1).toString();
-                settingKeyIds.insert(name, query.value(0).toInt());
-                QVariant value = query.value(2);
-                if (value.convert(metaTypeFromSettingType(query.value(3).toInt())))
-                    settings.setValue(name, value);
-            }
-        }
+    QSqlQuery query = Systemus::exec("SELECT CURRENT_TIMESTAMP", &ok);
+    if (ok && query.next()) {
+        now = query.value(0).toDateTime();
+        return true;
     } else {
-        force = true;
-    }
-
-    if (force) {
-        Data::beginTransaction();
-
-        for (const QString &name : dirtySettingKeys) {
-            const QVariant value = settings.value(name);
-
-            record.setValue(1, name);
-            record.setValue(2, settings.value(name).toString());
-            record.setValue(3, settingTypeFromMetatype(value.metaType()));
-
-            QString statement = Data::driver()->sqlStatement(QSqlDriver::InsertStatement, table, record, false);
-
-            // Warning: MySQL only !
-            statement.append(" ON DUPLICATE KEY UPDATE value = VALUES(value), type = VALUES(type)");
-
-            Data::execQuery(statement, &ok);
-
-            if (!ok)
-                break;
-        }
-
-        if (ok) {
-            Data::commitTransaction();
-            dirtySettingKeys.clear();
-        } else {
-            Data::rollbackTransaction();
-        }
-    }
-
-    settings.endGroup();
-    return ok;
-}
-
-QString SystemPrivate::settingKey(const QString &name) const
-{
-    return qApp->applicationName() + '/' + name;
-}
-
-int SystemPrivate::settingTypeFromMetatype(const QMetaType &type)
-{
-    switch (type.id()) {
-    case QMetaType::Int:
-        return SettingType::Int;
-    case QMetaType::Double:
-        return SettingType::Double;
-    case QMetaType::Bool:
-        return SettingType::Bool;
-    case QMetaType::QString:
-        return SettingType::String;
-    case QMetaType::QDate:
-        return SettingType::Date;
-    case QMetaType::QTime:
-        return SettingType::Time;
-    case QMetaType::QDateTime:
-        return SettingType::DateTime;
-    case QMetaType::QByteArray:
-        return SettingType::ByteArray;
-    default:
-        return SettingType::Unknown;
+        return false;
     }
 }
 
-QMetaType SystemPrivate::metaTypeFromSettingType(int type)
+bool SystemPrivate::timersActive() const
 {
-    switch (type) {
-    case SettingType::Int:
-        return QMetaType(QMetaType::Int);
-    case SettingType::Double:
-        return QMetaType(QMetaType::Double);
-    case SettingType::Bool:
-        return QMetaType(QMetaType::Bool);
-    case SettingType::String:
-        return QMetaType(QMetaType::QString);
-    case SettingType::Date:
-        return QMetaType(QMetaType::QDate);
-    case SettingType::Time:
-        return QMetaType(QMetaType::QTime);
-    case SettingType::DateTime:
-        return QMetaType(QMetaType::QDateTime);
-    case SettingType::ByteArray:
-        return QMetaType(QMetaType::QByteArray);
-    default:
-        return QMetaType(QMetaType::UnknownType);
+    return m_heartbeatTimerId > 0 && m_nowTimerId > 0;
+}
+
+void SystemPrivate::startTimers()
+{
+    m_heartbeatTimerId = q->startTimer(heartbeatInterval);
+    m_nowTimerId = q->startTimer(1000);
+}
+
+void SystemPrivate::stopTimers()
+{
+    q->killTimer(m_heartbeatTimerId);
+    m_heartbeatTimerId = -1;
+
+    q->killTimer(m_nowTimerId);
+    m_nowTimerId = -1;
+}
+
+void SystemPrivate::processTimerEvent(QTimerEvent *event)
+{
+    if (event->timerId() == m_heartbeatTimerId) {
+        q->sync();
+        event->accept();
+    } else if (event->timerId() == m_nowTimerId) {
+        now = now.addSecs(1);
+        event->accept();
     }
+}
+
+QString SystemPrivate::systemTable()
+{
+    return QStringLiteral("SSystems");
+}
+
+QSqlRecord SystemPrivate::systemRecord()
+{
+    QSqlRecord record;
+    record.append(QSqlField("logo", QMetaType::fromType<QByteArray>()));
+    record.append(QSqlField("name", QMetaType::fromType<QString>()));
+    record.append(QSqlField("version", QMetaType::fromType<QString>()));
+    return record;
 }
 
 }

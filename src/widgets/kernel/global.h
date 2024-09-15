@@ -13,12 +13,5 @@
 #   define SYSTEMUS_WIDGETS_EXPORT
 #endif
 
-#define SYSTEMUS_INIT() systemus_init_widgets_resources();
-
-inline void SYSTEMUS_WIDGETS_EXPORT systemus_init_widgets_resources()
-{
-    Q_INIT_RESOURCE(systemus_widgets_res);
-}
-
 
 #endif // SYSTEMUS_WIDGETS_GLOBAL_H

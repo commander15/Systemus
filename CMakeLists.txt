@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(Systemus
     DESCRIPTION "The framework designed for us !"
-    VERSION     1.0.0
+    VERSION     1.2.0
     LANGUAGES   CXX C
 )
 
@@ -10,10 +10,11 @@ set(SYSTEMUS_VERSION_CODE 0)
 
 set(Systemus_LOCALES fr)
 
-set(Systemus_BUILD_TOOL         "" OFF CACHE BOOL "Build tool")
-set(Systemus_BUILD_WIDGETS      "" OFF CACHE BOOL "Build Widgets module")
-set(Systemus_BUILD_TEST         "" OFF CACHE BOOL "Build tests")
-set(Systemus_BUILD_TRANSLATIONS "" OFF CACHE BOOL "Build translations")
+set(Systemus_BUILD_TOOL         OFF CACHE BOOL "Build tool")
+set(Systemus_BUILD_EXAMPLES     OFF CACHE BOOL "Build examples")
+set(Systemus_BUILD_WIDGETS      OFF CACHE BOOL "Build Widgets module")
+set(Systemus_BUILD_TEST         OFF CACHE BOOL "Build tests")
+set(Systemus_BUILD_TRANSLATIONS OFF CACHE BOOL "Build translations")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -33,6 +34,10 @@ add_subdirectory(src)
 
 if (Systemus_BUILD_TEST)
     add_subdirectory(test)
+endif()
+
+if (Systemus_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()
 
 if (Systemus_BUILD_TRANSLATIONS)

@@ -3,7 +3,7 @@
 
 #include <QtSql/qsqldatabase.h>
 
-#include <SystemusCore/global.h>
+#include <SystemusCore/systemus.h>
 
 #include <gtest/gtest.h>
 
@@ -24,11 +24,11 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    Systemus::init(argc, argv);
+    Systemus::init(app);
 
     handler = qInstallMessageHandler(messageFilter);
 
-    QLoggingCategory::setFilterRules("systemus.*.debug = true");
+    QLoggingCategory::setFilterRules("systemus.sql.debug = true");
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
     db.setDatabaseName(QStringLiteral(TESTDATA_DIR) + "/sample_db.sqlite3");

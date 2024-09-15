@@ -3,68 +3,48 @@
 
 #include <SystemusCore/system.h>
 
-#include <QtCore/qversionnumber.h>
-#include <QtCore/qsettings.h>
-#include <QtCore/qdatetime.h>
-#include <QtCore/qtimer.h>
+#include <QtSql/qsqlrecord.h>
 
 namespace Systemus {
 
-class SystemPrivate : public QObject
+class SystemPrivate : public SystemData
 {
-    Q_OBJECT
-
 public:
+    enum SystemProperty {
+        LogoProperty,
+        NameProperty,
+        VersionProperty
+    };
+
     SystemPrivate(System *q);
 
-    bool isOnline() const;
-    void setOnline(bool online);
-    Q_SIGNAL void onlineStateChanged(bool online);
+    bool getProperties();
 
-    Q_SLOT void update();
-    bool getData();
-    bool syncSettings(bool force = false);
+    bool hasPendingPropertyChanges() const;
+    void markPropertyChange(SystemProperty property, bool changed = true);
+    bool commitPropertyChanges(QList<SystemProperty> *properties = nullptr);
 
-    QString settingKey(const QString &name) const;
+    bool getTime();
+
+    bool timersActive() const;
+    void startTimers();
+    void stopTimers();
+    void processTimerEvent(QTimerEvent *event);
 
     System *q;
 
-    QByteArray logoData;
-
-    QString name;
-    QVersionNumber version;
-
-    QDateTime now;
-    int nowTimerId;
+    int heartbeatInterval;
 
     QString dir;
 
-    QSettings settings;
-    QHash<QString, int> settingKeyIds;
-    QStringList dirtySettingKeys;
-
-    int heartbeatInterval;
-    int heartbeatTimerId;
-
-    QString dbConnection;
-
 private:
-    enum SettingType {
-        Unknown = -1,
-        Int = 10,
-        Double = 20,
-        Bool = 30,
-        String = 40,
-        Date = 50,
-        Time = 60,
-        DateTime = 70,
-        ByteArray = 80
-    };
+    static QString systemTable();
+    static QSqlRecord systemRecord();
 
-    static int settingTypeFromMetatype(const QMetaType &type);
-    static QMetaType metaTypeFromSettingType(int type);
+    QList<SystemProperty> m_dirtyProperties;
 
-    bool _online;
+    int m_heartbeatTimerId;
+    int m_nowTimerId;
 };
 
 }

@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/systemus">
+        <file>sql_keywords.txt</file>
+    </qresource>
+</RCC>

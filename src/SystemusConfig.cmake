@@ -31,6 +31,30 @@ endif()
 include(${CMAKE_CURRENT_LIST_DIR}/SystemusMacros.cmake)
 
 # Core
+set(Systemus_PRIMARY_NAME "id"  CACHE STRING "Default primary property name")
+set(Systemus_PRIMARY_TYPE "int" CACHE STRING "Default primary property type")
+
+# Ensure variables are set and not empty
+if(NOT Systemus_PRIMARY_NAME STREQUAL "" AND NOT Systemus_PRIMARY_TYPE STREQUAL "")
+
+    # Convert the variable names to upper case
+    string(TOUPPER "Systemus_PRIMARY_NAME" SYSTEMUS_PRIMARY_NAME_UPPER)
+    string(TOUPPER "Systemus_PRIMARY_TYPE" SYSTEMUS_PRIMARY_TYPE_UPPER)
+
+    # Convert the first letter of Systemus_PRIMARY_NAME to upper case to form SYSTEMUS_PRIMARY_NAME2
+    string(SUBSTRING "${Systemus_PRIMARY_NAME}" 0  1 FIRST_CHAR)
+    string(SUBSTRING "${Systemus_PRIMARY_NAME}" 1 -1 REST_OF_NAME)
+    string(TOUPPER "${FIRST_CHAR}" FIRST_CHAR)
+    set(SYSTEMUS_PRIMARY_NAME2 "${FIRST_CHAR}${REST_OF_NAME}")
+
+    # Add global compile definitions
+    add_compile_definitions(
+        SYSTEMUS_PRIMARY_NAME1=${Systemus_PRIMARY_NAME}
+        SYSTEMUS_PRIMARY_NAME2=${SYSTEMUS_PRIMARY_NAME2}
+        SYSTEMUS_PRIMARY_TYPE=${Systemus_PRIMARY_TYPE}
+    )
+endif()
+
 include(${CMAKE_CURRENT_LIST_DIR}/SystemusCoreTargets.cmake)
 set(Systemus_Qt_COMPONENTS Core Sql)
 
