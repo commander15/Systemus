@@ -42,7 +42,7 @@ public:
 
     bool isLoggedIn() const;
     User loggedUser() const;
-    Q_SLOT bool logIn(const QString &name, const QString &password);
+    Q_SLOT bool logIn(const QString &login, const QString &password);
     Q_SLOT void logOut();
     Q_SIGNAL void loggedIn(const User &user);
     Q_SIGNAL void loggedOut();
@@ -53,9 +53,11 @@ public:
 private:
     Authenticator();
 
+    static QString selectStatement(const QString &login);
+
     QScopedPointer<AuthenticatorPrivate> d_ptr;
 
-    static QScopedPointer<Authenticator> _instance;
+    static QScopedPointer<Authenticator> s_instance;
 };
 
 }

@@ -21,6 +21,8 @@ public:
     QAction *editAction;
     QAction *deleteAction;
 
+    FilterWidget *filterWidget;
+
     DataEditDialog *editDialog;
 
     Orm::DataTableModel *model;

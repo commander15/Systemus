@@ -1,7 +1,6 @@
 #include "authenticator.h"
 #include "authenticator_p.h"
 
-#include <SystemusCore/system.h>
 #include <SystemusCore/private/user_p.h>
 
 namespace Systemus {
@@ -23,7 +22,7 @@ QString AuthenticationError::errorString() const
         return QString();
 
     case BadCredentials:
-        return tr("Incorrect user name / password");
+        return tr("Incorrect user login / password");
 
     case UserNotFound:
         return tr("User not found");
@@ -40,11 +39,6 @@ QString AuthenticationError::errorString() const
 Authenticator::Authenticator() :
     d_ptr(new AuthenticatorPrivate)
 {
-    System *system = System::instance();
-    connect(this, &Authenticator::loggedIn, system, &System::setUser);
-    connect(this, &Authenticator::loggedOut, system, [system] {
-        system->setUser(User());
-    });
 }
 
 Authenticator::~Authenticator()
@@ -63,7 +57,7 @@ User Authenticator::loggedUser() const
     return d->user;
 }
 
-bool Authenticator::logIn(const QString &name, const QString &password)
+bool Authenticator::logIn(const QString &login, const QString &password)
 {
     if (isLoggedIn())
         logOut();
@@ -71,7 +65,7 @@ bool Authenticator::logIn(const QString &name, const QString &password)
     S_D(Authenticator);
 
     bool ok;
-    QSqlQuery query = Data::execQuery("SELECT id, active, password FROM Users WHERE name = '" + name + "'", &ok);
+    QSqlQuery query = exec(selectStatement(login), &ok);
 
     if (!ok) {
         d->error = AuthenticationError::UnknownError;
@@ -85,7 +79,7 @@ bool Authenticator::logIn(const QString &name, const QString &password)
         return false;
     }
 
-    if (!query.value(1).toBool()) {
+    if (query.value(1).toInt() != 1) {
         d->error = AuthenticationError::DisabledAccount;
         emit logInError(d->error);
         return false;
@@ -97,7 +91,7 @@ bool Authenticator::logIn(const QString &name, const QString &password)
         return false;
     }
 
-    d->user.get(query.value(0).toInt());
+    d->user.getByPrimary(query.value(0));
     emit loggedIn(d->user);
     return true;
 }
@@ -115,11 +109,17 @@ void Authenticator::logOut()
 
 Authenticator *Authenticator::instance()
 {
-    if (!_instance)
-        _instance.reset(new Authenticator());
-    return _instance.get();
+    if (!s_instance)
+        s_instance.reset(new Authenticator());
+    return s_instance.get();
 }
 
-QScopedPointer<Authenticator> Authenticator::_instance;
+QString Authenticator::selectStatement(const QString &login)
+{
+    const QString statement = "SELECT {{id}}, {{status}}, {{password}} FROM {{Systemus::User}} WHERE {{login}} = '%1'";
+    return Orm::formatExpression(statement.arg(login), "Systemus::User");
+}
+
+QScopedPointer<Authenticator> Authenticator::s_instance;
 
 }

@@ -103,6 +103,37 @@ QSqlField MetaTable::userField() const
     return d->record.field(d->userFieldIndex);
 }
 
+QStringList MetaTable::searchPropertyNames() const
+{
+    S_D(const MetaTable);
+
+    if (!d->metaObject)
+        return QStringList();
+
+    QStringList names;
+    for (int i : d->searchPropertyIndexes)
+        names.append(d->metaObject->property(i).name());
+    return names;
+}
+
+QString MetaTable::searchPropertyName(int index) const
+{
+    S_D(const MetaTable);
+    return d->metaObject->property(d->searchPropertyIndexes.at(index)).name();
+}
+
+QMetaProperty MetaTable::searchProperty(int index) const
+{
+    S_D(const MetaTable);
+    return d->metaObject->property(d->searchPropertyIndexes.at(index));
+}
+
+int MetaTable::searchCount() const
+{
+    S_D(const MetaTable);
+    return d->searchPropertyIndexes.size();
+}
+
 QStringList MetaTable::metaPropertyNames() const
 {
     S_D(const MetaTable);
@@ -396,6 +427,8 @@ void MetaTable::registerClass(const QString &name, const QMetaObject *metaObject
     data->tableName = backend->tableNameFromMetaObject(metaObject);
 
     data->record = backend->recordFromMetaObject(metaObject, &data->metaPropertyFieldIndexes, &data->secretPropertyFieldIndexes);
+
+    backend->searchPropertiesFromMetaObject(metaObject, &data->searchPropertyIndexes);
 
     data->metaPropertyIndexes = data->metaPropertyFieldIndexes.keys();
     data->metaFieldIndexes.reserve(data->metaPropertyIndexes.size());

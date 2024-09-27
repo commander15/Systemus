@@ -1,139 +1,99 @@
 #include "filterwidget.h"
-#include "filterwidget_p.h"
-#include "ui_filterwidget.h"
 
-#include <SystemusWidgets/private/filterwidgetimpl_p.h>
-
-#include <QtWidgets/qcheckbox.h>
-#include <QtWidgets/qgroupbox.h>
-
-#include <QtCore/qcoreapplication.h>
+#include <SystemusCore/namespace.h>
 
 namespace Systemus {
 
 FilterWidget::FilterWidget(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::FilterWidget),
-    d(new FilterWidgetPrivate(this))
+    QWidget(parent)
 {
-    ui->setupUi(this);
-
-    connect(ui->searchInput, &QLineEdit::textChanged, this, &FilterWidget::searchQueryChanged);
 }
 
 FilterWidget::~FilterWidget()
 {
-    delete ui;
 }
 
-QString FilterWidget::searchQuery() const
+QVariant FilterWidget::parameter(const QString &name) const
 {
-    return ui->searchInput->text();
+    return parameterValues(parameterIndex(name)).constFirst();
 }
 
-void FilterWidget::setSearchQuery(const QString &query)
+void FilterWidget::setParameter(const QString &name, const QVariant &value)
 {
-    ui->searchInput->setText(query);
+    setParameterValues(parameterIndex(name), { value });
 }
 
-FilterWidgetItem *FilterWidget::item(int index) const
+void FilterWidget::setParameter(const QString &name, const QVariant &value1, const QVariant &value2)
 {
-    return (d->items.size() > index ? d->items.at(index) : nullptr);
+    setParameterValues(parameterIndex(name), { value1, value2 });
 }
 
-int FilterWidget::itemCount() const
+QString FilterWidget::parameterProperty(int index) const
 {
-    return d->items.size();
+    return parameterName(index);
 }
 
-FilterWidgetItem *FilterWidget::addString(const QString &name, const QString &property)
+void FilterWidget::clearParameterValues(int index)
 {
-    return addString(name, property, 30);
+    setParameterValues(index, {});
 }
 
-FilterWidgetItem *FilterWidget::addString(const QString &name, const QString &property, int maxLength)
+QString FilterWidget::parameterFilter(int index) const
 {
-    QLineEdit *edit = new QLineEdit(this);
-    edit->setMaxLength(maxLength);
-    new FilterWidgetItem(edit, this);
-}
+    const QVariantList values = parameterValues(index);
+    QString expression;
 
-FilterWidgetItem *FilterWidget::addString(const QString &name, const QString &property, const QStringList &values)
-{
+    if (values.isEmpty()) {
+        // Nothing to do
+    } else if (values.size() == 1)
+        expression.append(" = " + formatValue(values.constFirst()));
+    else if (values.size() == 2) {
+        const QVariant v1 = values.constFirst();
+        const QVariant v2 = values.constLast();
 
-}
+        switch (v1.metaType().id()) {
+        case QMetaType::QDate:
+        case QMetaType::QTime:
+            expression.append("BETWEEN " + formatValue(v1) + " AND " + formatValue(v2));
+            break;
 
-FilterWidgetItem::FilterWidgetItem(QWidget *widget, FilterWidget *filter) :
-    FilterWidgetItem(QList<QWidget *>() << widget, filter)
-{
-}
-
-FilterWidgetItem::FilterWidgetItem(const QList<QWidget *> &widgets, FilterWidget *filter) :
-    _title(new QCheckBox(filter)),
-    _layout(nullptr),
-    _widgets(widgets)
-{
-    QFormLayout *layout = filter->ui->formLayout;
-    if (widgets.size() == 1) {
-        layout->addRow(_title, widgets.at(0));
-        _layout = layout;
-    } else if (widgets.size() > 1) {
-        layout->addRow(_title);
-
-        QWidget *container = new QWidget(filter);
-        {
-            _layout = new QFormLayout(container);
-            _layout->addRow(QCoreApplication::translate("FilterWidgetItem", "From"), widgets.at(0));
-            _layout->addRow(QCoreApplication::translate("FilterWidgetItem", "To"), widgets.at(1));
-            for (int i(2); i < widgets.size(); ++i)
-                _layout->addRow(widgets.at(i));
-            container->setLayout(_layout);
+        default:
+            expression.append("IN (" + formatValue(v1) + ", " + formatValue(v2) + ')');
+            break;
         }
-        layout->addRow(container);
+    } else {
+        QStringList strings;
+        strings.resize(values.size());
+        std::transform(values.begin(), values.end(), strings.begin(), [](const QVariant &val) {
+            return formatValue(val);
+        });
+
+        expression.append("IN (" + strings.join(", ") + ')');
     }
+
+    if (!expression.isEmpty())
+        return parameterProperty(index) + ' ' + expression;
+    else
+        return QString();
 }
 
-FilterWidgetItem::~FilterWidgetItem()
+int FilterWidget::parameterIndex(const QString &parameter) const
 {
+    for (int i(0); i < parameterCount(); ++i)
+        if (parameterName(i) == parameter)
+            return i;
+    return -1;
 }
 
-QString FilterWidgetItem::title() const
+QString FilterWidget::filter() const
 {
-    return _title->text();
-}
-
-void FilterWidgetItem::setTitle(const QString &title)
-{
-    _title->setText(title);
-}
-
-bool FilterWidgetItem::isActive() const
-{
-    return _title->isChecked();
-}
-
-void FilterWidgetItem::setActive(bool active)
-{
-    _title->setChecked(active);
-}
-
-QString FilterWidgetItem::propertyName() const
-{
-    return _propertyName;
-}
-
-void FilterWidgetItem::setPropertyName(const QString &name)
-{
-    _propertyName = name;
-}
-
-bool FilterWidgetItem::hasValue() const
-{
-    return value().isValid();
-}
-
-void FilterWidgetItem::translateItem()
-{
+    QStringList filters;
+    for (int i(0); i < parameterCount(); ++i) {
+        const QString filter = parameterFilter(i);
+        if (!filter.isEmpty())
+            filters.append(filter);
+    }
+    return filters.join(" AND ");
 }
 
 }

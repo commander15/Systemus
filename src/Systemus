@@ -1,0 +1,11 @@
+#include <SystemusCore/namespace.h>
+#include <SystemusCore/system.h>
+#include <SystemusCore/data.h>
+#include <SystemusCore/datarelation.h>
+
+#ifdef SYSTEMUS_WIDGETS_LIB
+#   include <SystemusWidgets/namespace.h>
+#   include <SystemusWidgets/logindialog.h>
+#endif
+
+#include <QtSql/qsqldatabase.h>

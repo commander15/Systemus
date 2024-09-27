@@ -22,13 +22,15 @@ public:
     };
     Q_DECLARE_FLAGS(MapOptions, MapOption)
 
-    static QString tableName(const QMetaObject *metaObject, MapOptions options = NoFieldMapOption);
-    static QString tableName(const QString &className, MapOptions options = NoFieldMapOption);
-    static QString tableName(const MetaTable &table, MapOptions options = NoFieldMapOption);
+    static QString tableName(const QMetaObject *metaObject, int options = NoFieldMapOption);
+    static QString tableName(const QString &className, int options = NoFieldMapOption);
+    static QString tableName(const MetaTable &table, int options = NoFieldMapOption);
+    static QString defaultTableName(const QString &className, int options = NoFieldMapOption);
 
-    static QString fieldName(const QString &propertyName, const QMetaObject *metaObject, MapOptions options = NoFieldMapOption);
-    static QString fieldName(const QString &propertyName, const QString &className, MapOptions options = NoFieldMapOption);
-    static QString fieldName(const QString &propertyName, const MetaTable &table, MapOptions options = NoFieldMapOption);
+    static QString fieldName(const QString &propertyName, const QMetaObject *metaObject, int options = NoFieldMapOption);
+    static QString fieldName(const QString &propertyName, const QString &className, int options = NoFieldMapOption);
+    static QString fieldName(const QString &propertyName, const MetaTable &table, int options = NoFieldMapOption);
+    static QString defaultFieldName(const QString &propertyName, const QString &className, int options = NoFieldMapOption);
 
     static QSqlRecord record(const QMetaObject *object);
     static QSqlRecord record(const QString &className);

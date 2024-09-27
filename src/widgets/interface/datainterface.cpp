@@ -2,10 +2,12 @@
 #include "datainterface_p.h"
 #include "ui_datainterface.h"
 
+#include <SystemusWidgets/filterwidget.h>
 #include <SystemusWidgets/dataedit.h>
 
 #include <SystemusCore/data.h>
 #include <SystemusCore/datatablemodel.h>
+#include <SystemusCore/metamapper.h>
 
 #include <QtWidgets/qmessagebox.h>
 #include <QtWidgets/qmenu.h>
@@ -24,6 +26,8 @@ DataInterface::DataInterface(QWidget *parent) :
 
     ui->setupUi(this);
 
+    ui->filterFrame->setVisible(false);
+
     d->createContextMenu();
 
     connect(ui->searchInput, &QLineEdit::textEdited, this, [=](const QString &query) {
@@ -31,7 +35,8 @@ DataInterface::DataInterface(QWidget *parent) :
     });
     connect(ui->searchInput, &QLineEdit::returnPressed, this, QOverload<>::of(&DataInterface::search));
 
-    connect(ui->toggleFiltersButtons, &QAbstractButton::clicked, this, &DataInterface::toggleFiltersVisibility);
+    ui->toggleFiltersButtons->setVisible(false);
+    connect(ui->filterButton, &QAbstractButton::clicked, this, &DataInterface::refresh);
     connect(ui->refreshButton, &QAbstractButton::clicked, this, &DataInterface::refresh);
     connect(ui->addButton, &QAbstractButton::clicked, this, &DataInterface::addNewData);
     connect(ui->editButton, &QAbstractButton::clicked, this, &DataInterface::editCurrentData);
@@ -78,23 +83,6 @@ bool DataInterface::searchWithLabel(const QString &query, const QString &label)
     return refresh();
 }
 
-bool DataInterface::isFiltersVisible() const
-{
-    return false;
-}
-
-void DataInterface::toggleFiltersVisibility()
-{
-    setFiltersVisible(!isFiltersVisible());
-}
-
-void DataInterface::setFiltersVisible(bool visible)
-{
-    if (false) {
-        //
-    }
-}
-
 bool DataInterface::refresh()
 {
     S_D(DataInterface);
@@ -106,6 +94,13 @@ bool DataInterface::refresh()
             if (!query.isEmpty())
                 filters.append(searchFilter(query));
         }
+
+        {
+            const QString user = userFilter();
+            if (!user.isEmpty())
+                filters.append(user);
+        }
+
         {
             const QString extra = extraFilter();
             if (!extra.isEmpty())
@@ -117,6 +112,8 @@ bool DataInterface::refresh()
 
         d->model->setFilter(filters.join(" AND "));
         if (d->model->select()) {
+            ui->tableView->scrollToTop();
+
             ui->pageInput->setMinimum(d->model->pageCount() == 0 ? 0 : 1);
             ui->pageInput->setMaximum(d->model->pageCount());
             ui->pageInput->setSpecialValueText(d->model->pageCount() == 0 ? tr("N / A") : QString());
@@ -183,16 +180,16 @@ bool DataInterface::editData(const Data &data)
     }
 }
 
-bool DataInterface::addNewData()
+QVariant DataInterface::addNewData()
 {
     S_D(DataInterface);
     if (supportAction(AddAction))
         return addData(d->model ? d->model->item() : Data());
     else
-        return false;
+        return QVariant();
 }
 
-bool DataInterface::addData(const Data &data)
+QVariant DataInterface::addData(const Data &data)
 {
     S_D(DataInterface);
 
@@ -203,18 +200,18 @@ bool DataInterface::addData(const Data &data)
         if (d->editDialog->exec())
             editedData = d->editDialog->data();
         else
-            return false;
+            return QVariant();
     }
 
     Systemus::beginTransaction();
     if (editedData.insert()) {
-        bool ok = Systemus::commitTransaction();
+        Systemus::commitTransaction();
         refresh();
-        return ok;
+        return editedData.primaryValue();
     } else {
         Systemus::rollbackTransaction();
         showErrorMessage(tr("Error"), tr("Error during data add !"), editedData.lastError());
-        return false;
+        return QVariant();
     }
 }
 
@@ -266,6 +263,20 @@ QMenu *DataInterface::contextMenu() const
 {
     S_D(const DataInterface);
     return d->contextMenu;
+}
+
+FilterWidget *DataInterface::filterWidget() const
+{
+    S_D(const DataInterface);
+    return d->filterWidget;
+}
+
+void DataInterface::setFilterWidget(FilterWidget *widget)
+{
+    S_D(DataInterface);
+    d->filterWidget = widget;
+    ui->filterContainer->layout()->addWidget(widget);
+    ui->toggleFiltersButtons->setVisible(widget);
 }
 
 DataEditDialog *DataInterface::editDialog() const
@@ -489,11 +500,11 @@ QVariant DataInterface::processAction(int action, const QVariantList &data)
     }
 }
 
-QAbstractButton *DataInterface::addButton(const QIcon &icon)
+QAbstractButton *DataInterface::addButton(const QIcon &icon, const QString &text)
 {
     QToolButton *button = new QToolButton(this);
     button->setIcon(icon);
-
+    button->setText(text);
     addButton(button);
     return button;
 }
@@ -526,9 +537,35 @@ QString DataInterface::searchFilter(const QString &query) const
     S_D(const DataInterface);
     const Orm::MetaTable table = d->model->classTable();
 
-    const QString field = table.userFieldName();
-    const QString value = Systemus::formatValue(query + '%');
-    return QStringLiteral("%1 LIKE %2").arg(field, value);
+    QList<QMetaProperty> properties;
+    for (int i(0); i < table.searchCount(); ++i)
+        properties.append(table.searchProperty(i));
+    if (properties.isEmpty())
+        properties.append(table.userProperty());
+
+    QStringList expressions;
+    expressions.resize(properties.size());
+
+    const int options = Orm::MetaMapper::IncludeTableName|Orm::MetaMapper::EscapeIdentifiers;
+
+    std::transform(properties.begin(), properties.end(), expressions.begin(), [table, options, query](const Orm::SecretProperty &property) {
+        const QString &prop = Orm::MetaMapper::fieldName(property.name(), table, options);
+        if (property.metaType().id() == QMetaType::QString) {
+            return prop + " LIKE " + formatValue(query + '%');
+        } else {
+            QVariant value = query;
+            value.convert(property.metaType());
+            return prop + " = " + formatValue(value);
+        }
+    });
+
+    return expressions.join(" AND ");
+}
+
+QString DataInterface::userFilter() const
+{
+    S_D(const DataInterface);
+    return (d->filterWidget ? d->filterWidget->filter() : QString());
 }
 
 QString DataInterface::extraFilter() const
@@ -571,6 +608,7 @@ DataInterfacePrivate::DataInterfacePrivate(DataInterface *q) :
     showAction(nullptr),
     editAction(nullptr),
     deleteAction(nullptr),
+    filterWidget(nullptr),
     editDialog(nullptr),
     model(nullptr)
 {

@@ -35,7 +35,7 @@ public:
 
     QByteArray logoData() const;
     Q_SLOT void setLogoData(const QByteArray &data);
-    Q_SIGNAL void logoDataChanged(const QByteArray &data);
+    Q_SIGNAL void logoDataChanged();
 
     QString name() const;
     Q_SLOT void setName(const QString &name);

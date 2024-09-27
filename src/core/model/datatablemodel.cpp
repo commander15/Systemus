@@ -20,6 +20,15 @@ DataTableModel::~DataTableModel()
 {
 }
 
+QVariant DataTableModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if (orientation == Qt::Vertical && role == Qt::DisplayRole) {
+        return ((d_ptr->page() - 1) * d_ptr->itemsPerPage()) + (section + 1);
+    } else {
+        return QSqlQueryModel::headerData(section, orientation, role);
+    }
+}
+
 Systemus::Data DataTableModel::item() const
 {
     void *rawItem = d_ptr->table.newData();
@@ -28,7 +37,9 @@ Systemus::Data DataTableModel::item() const
 
 Systemus::Data DataTableModel::item(int row) const
 {
-    return *d_ptr->item(row);
+    Systemus::Data data = *d_ptr->item(row);
+    data.setModelRecord(record(row));
+    return data;
 }
 
 QByteArray DataTableModel::className() const
@@ -169,27 +180,30 @@ QStringList DataTableModel::linkedClassNames() const
     return names;
 }
 
-void DataTableModel::linkTo(const QString &className)
+void DataTableModel::linkTo(const QString &className, LinkMode mode)
 {
     DataTableModelLink link;
     link.className = className;
+    link.linkMode = mode;
     d_ptr->links.append(link);
 }
 
-void DataTableModel::linkTo(const QString &className, const QString &foreignProperty)
+void DataTableModel::linkTo(const QString &className, const QString &foreignProperty, LinkMode mode)
 {
     DataTableModelLink link;
     link.className = className;
     link.foreignProperty = foreignProperty;
+    link.linkMode = mode;
     d_ptr->links.append(link);
 }
 
-void DataTableModel::linkTo(const QString &className, const QString &foreignProperty, const QString &indexProperty)
+void DataTableModel::linkTo(const QString &className, const QString &foreignProperty, const QString &indexProperty, LinkMode mode)
 {
     DataTableModelLink link;
     link.className = className;
     link.foreignProperty = foreignProperty;
     link.indexProperty = indexProperty;
+    link.linkMode = mode;
     d_ptr->links.append(link);
 }
 
@@ -232,7 +246,22 @@ QString DataTableModel::selectStatement(StatementType type) const
         else
             foreignProperty = d_ptr->table.foreignPropertyName();
 
-        QString currentJoin = join.arg(true ? "INNER" : "LEFT", MetaMapper::tableName(indexTable, mapOptions));
+        QString currentJoin;
+        switch (link.linkMode) {
+        case InnerLink:
+            currentJoin = join.arg("INNER");
+            break;
+
+        case LeftLink:
+            currentJoin = join.arg("LEFT");
+            break;
+
+        case RightLink:
+            currentJoin = join.arg("RIGHT");
+            break;
+        }
+
+        currentJoin = currentJoin.arg(MetaMapper::tableName(indexTable, mapOptions));
         currentJoin = currentJoin.arg(MetaMapper::fieldName(indexProperty, indexTable, mapOptions));
         currentJoin = currentJoin.arg(MetaMapper::fieldName(foreignProperty, d_ptr->table, mapOptions));
 
@@ -320,12 +349,18 @@ int DataTableModelPrivate::sortColumn() const
 
 Qt::SortOrder DataTableModelPrivate::sortOrder() const
 {
-    return Qt::AscendingOrder;
+    return (!m_sortOrders.isEmpty() ? m_sortOrders.first() : Qt::DescendingOrder);
 }
 
 void DataTableModelPrivate::setSort(int column, Qt::SortOrder order)
 {
-    //
+    if (m_sortProperties.isEmpty()) {
+        m_sortProperties.append(propertyName(column));
+        m_sortOrders.append(order);
+    } else {
+        m_sortProperties.replace(0, propertyName(column));
+        m_sortOrders.replace(0, order);
+    }
 }
 
 int DataTableModelPrivate::page() const
@@ -361,6 +396,14 @@ int DataTableModelPrivate::itemsPerPage() const
 void DataTableModelPrivate::setItemsPerPage(int items)
 {
     m_itemsPerPage = items;
+}
+
+QString DataTableModelPrivate::propertyName(int index) const
+{
+    if (!properties.isEmpty())
+        return (index < properties.size() ? properties.at(index) : QString());
+    else
+        return table.className() + '.' + table.propertyName(index);
 }
 
 }

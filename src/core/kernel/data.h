@@ -60,6 +60,9 @@ public:
     template<typename T> T to() const;
     template<typename T> T *toPointer() const;
 
+    QSqlRecord modelRecord() const;
+    void setModelRecord(const QSqlRecord &record);
+
 protected:
     void initData() override;
     void registerData() override;

@@ -10,35 +10,45 @@
 
 namespace Systemus {
 
-QString Orm::MetaMapper::tableName(const QMetaObject *metaObject, MapOptions options)
+QString Orm::MetaMapper::tableName(const QMetaObject *metaObject, int options)
 {
     return tableName(metaObject->className(), options);
 }
 
-QString Orm::MetaMapper::tableName(const QString &className, MapOptions options)
+QString Orm::MetaMapper::tableName(const QString &className, int options)
 {
     return tableName(MetaTable::fromClassName(className), options);
 }
 
-QString Orm::MetaMapper::tableName(const MetaTable &table, MapOptions options)
+QString Orm::MetaMapper::tableName(const MetaTable &table, int options)
 {
-    if (options.testFlag(EscapeIdentifiers))
+    const MapOptions mapOptions(options);
+    if (mapOptions.testFlag(EscapeIdentifiers))
         return escapeTableName(table.tableName());
     else
         return table.tableName();
 }
 
-QString Orm::MetaMapper::fieldName(const QString &propertyName, const QMetaObject *metaObject, MapOptions options)
+QString Orm::MetaMapper::defaultTableName(const QString &className, int options)
+{
+    return Backend::instance()->tableNameFromClassName(className);
+}
+
+QString Orm::MetaMapper::fieldName(const QString &propertyName, const QMetaObject *metaObject, int options)
 {
     return fieldName(propertyName, metaObject->className(), options);
 }
 
-QString Orm::MetaMapper::fieldName(const QString &propertyName, const QString &className, MapOptions options)
+QString Orm::MetaMapper::fieldName(const QString &propertyName, const QString &className, int options)
 {
-    return fieldName(propertyName, MetaTable::fromClassName(className), options);
+    const MetaTable table = MetaTable::fromClassName(className);
+    if (table.isValid())
+        return fieldName(propertyName, table, options);
+    else
+        return defaultFieldName(propertyName, className, options);
 }
 
-QString Orm::MetaMapper::fieldName(const QString &propertyName, const MetaTable &table, MapOptions options)
+QString Orm::MetaMapper::fieldName(const QString &propertyName, const MetaTable &table, int options)
 {
     if (propertyName.contains('.')) {
         const QStringList parts = propertyName.split('.', Qt::SkipEmptyParts);
@@ -53,21 +63,39 @@ QString Orm::MetaMapper::fieldName(const QString &propertyName, const MetaTable 
             return fieldName(parts.at(parts.size() - 1), parts.at(parts.size() - 2), options);
         }
     } else {
+        const MapOptions mapOptions(options);
+
         QString name;
-        if (options.testFlag(IncludeTableName))
-            name.append(tableName(table, options) + '.');
+        if (mapOptions.testFlag(IncludeTableName))
+            name.append(tableName(table, mapOptions) + '.');
 
         {
             QString field = table.fieldName(table.indexOfProperty(propertyName));
             if (field.isEmpty())
                 field = Backend::instance()->fieldNameFromPropertyName(propertyName, table.className());
 
-            if (options.testFlag(EscapeIdentifiers))
+            if (mapOptions.testFlag(EscapeIdentifiers))
                 field = escapeFieldName(field);
             name.append(field);
         }
         return name;
     }
+}
+
+QString Orm::MetaMapper::defaultFieldName(const QString &propertyName, const QString &className, int options)
+{
+    const MapOptions mapOptions(options);
+    QString name;
+
+    if (mapOptions.testFlag(IncludeTableName))
+        name.append(defaultTableName(className, options) + '.');
+
+    QString field = Backend::instance()->fieldNameFromPropertyName(propertyName, className);
+    if (mapOptions.testFlag(EscapeIdentifiers))
+        field = escapeFieldName(field);
+    name.append(field);
+
+    return name;
 }
 
 QSqlRecord Orm::MetaMapper::record(const QMetaObject *object)

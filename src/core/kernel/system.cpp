@@ -143,7 +143,7 @@ void System::sync()
             for (SystemPrivate::SystemProperty property : std::as_const(properties)) {
                 switch (property) {
                 case Systemus::SystemPrivate::LogoProperty:
-                    emit logoDataChanged(d->logoData);
+                    emit logoDataChanged();
                     break;
 
                 case Systemus::SystemPrivate::NameProperty:

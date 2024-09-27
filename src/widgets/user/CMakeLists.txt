@@ -1,11 +1,11 @@
 target_headers(Widgets
     PUBLIC
         logindialog.h
-        useredit.h
+        #useredit.h
 )
 
 target_sources(Widgets
     PRIVATE
-        logindialog.cpp
-        useredit.cpp
+        logindialog.cpp logindialog.ui
+        #useredit.cpp
 )

@@ -37,3 +37,5 @@ install(FILES SystemusConfig.cmake SystemusConfigVersion.cmake
     SystemusMacros.cmake
     DESTINATION lib/cmake/Systemus
 )
+
+install(FILES Systemus DESTINATION include)

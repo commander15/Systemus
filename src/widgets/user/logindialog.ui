@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>LoginDialog</class>
- <widget class="QDialog" name="LoginDialog">
+ <class>Systemus::LoginDialog</class>
+ <widget class="QDialog" name="Systemus::LoginDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -29,26 +29,20 @@
    <iconset>
     <normaloff>:/accessio/icons/Accessio@2.png</normaloff>:/accessio/icons/Accessio@2.png</iconset>
   </property>
-  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0" columnstretch="1,0,1">
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0" columnstretch="1,3,1">
    <item row="0" column="1">
-    <widget class="QLabel" name="label">
+    <widget class="QLabel" name="logoOutput">
      <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>120</height>
-      </size>
-     </property>
-     <property name="maximumSize">
       <size>
        <width>320</width>
        <height>120</height>
       </size>
      </property>
-     <property name="pixmap">
-      <pixmap resource="../resources/systemus_widgets_res.qrc">:/systemus/icons/systemus_full.png</pixmap>
-     </property>
-     <property name="scaledContents">
-      <bool>true</bool>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>120</height>
+      </size>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -124,9 +118,6 @@
         <property name="placeholderText">
          <string>Password</string>
         </property>
-        <property name="clearButtonEnabled">
-         <bool>true</bool>
-        </property>
        </widget>
       </item>
       <item>
@@ -153,6 +144,12 @@
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
            </spacer>
           </item>
           <item>
@@ -169,6 +166,12 @@
            <spacer name="horizontalSpacer_2">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
             </property>
            </spacer>
           </item>
@@ -201,6 +204,9 @@
             <property name="text">
              <string notr="true">*Error text</string>
             </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
            </widget>
           </item>
          </layout>
@@ -211,7 +217,30 @@
     </widget>
    </item>
   </layout>
-  <action name="loginAction"/>
+  <action name="actionLogin">
+   <property name="icon">
+    <iconset resource="../resources/systemus_widgets_res.qrc">
+     <normaloff>:/systemus/icons/login_id.png</normaloff>:/systemus/icons/login_id.png</iconset>
+   </property>
+  </action>
+  <action name="actionPassword">
+   <property name="icon">
+    <iconset resource="../resources/systemus_widgets_res.qrc">
+     <normaloff>:/systemus/icons/login_password.png</normaloff>:/systemus/icons/login_password.png</iconset>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionShowPassword">
+   <property name="icon">
+    <iconset resource="../resources/systemus_widgets_res.qrc">
+     <normaloff>:/systemus/icons/password_show.png</normaloff>:/systemus/icons/password_show.png</iconset>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
  </widget>
  <resources>
   <include location="../resources/systemus_widgets_res.qrc"/>

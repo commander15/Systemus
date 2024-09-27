@@ -10,6 +10,7 @@ add_subdirectory(interface)
 add_subdirectory(data)
 add_subdirectory(container)
 #add_subdirectory(view)
+add_subdirectory(user)
 
 target_link_libraries(Widgets PUBLIC Qt::Widgets Core)
 

@@ -2,24 +2,18 @@ target_headers(Core
     PUBLIC
         authenticator.h
         user.h
-        role.h
-        group.h
-        privilege.h
-        permission.h
+        #privilege.h
+        #permission.h
     PRIVATE
         authenticator_p.h
         user_p.h
-        role_p.h
-        group_p.h
-        privilege_p.h
+        #privilege_p.h
 )
 
 target_sources(Core
     PRIVATE
         authenticator.cpp
         user.cpp
-        role.cpp
-        group.cpp
-        privilege.cpp
-        permission.cpp
+        #privilege.cpp
+        #permission.cpp
 )

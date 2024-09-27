@@ -23,6 +23,8 @@ class SYSTEMUS_CORE_EXPORT MetaTableData : public QSharedData
 public:
     int primaryPropertyIndex = 0;
 
+    QList<int> searchPropertyIndexes;
+
     QList<int> metaPropertyIndexes;
     QMap<int, int> metaPropertyFieldIndexes;
 
@@ -56,6 +58,11 @@ public:
     QMetaProperty userProperty() const;
     QString userFieldName() const;
     QSqlField userField() const;
+
+    QStringList searchPropertyNames() const;
+    QString searchPropertyName(int index) const;
+    QMetaProperty searchProperty(int index) const;
+    int searchCount() const;
 
     QStringList metaPropertyNames() const;
     QString metaPropertyName(int index) const;

@@ -19,6 +19,8 @@ public:
     static Orm::Data *copy(const Orm::Data *other);
 
     QVariantHash properties;
+
+    QSqlRecord modelRecord;
 };
 
 }

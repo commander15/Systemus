@@ -33,6 +33,7 @@ public:
     virtual QString classNameFromTableName(const QString &tableName) const = 0;
     QList<SecretProperty> secretPropertiesFromMetaObject(const QMetaObject *metaObject) const;
     QList<SecretProperty> secretPropertiesFromString(const QString &str, const QMetaObject *metaObject) const;
+    QList<SecretProperty> searchPropertiesFromMetaObject(const QMetaObject *metaObject, QList<int> *metaIndexes = nullptr) const;
     QString foreignPropertyNameFromMetaObject(const QMetaObject *metaObject) const;
     virtual QString foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const = 0;
     virtual QString propertyNameFromFieldName(const QString &fieldName, const QString &table) const = 0;
@@ -66,6 +67,7 @@ public:
 protected:
     QMetaProperty primaryProperty(const QMetaObject *metaObject) const;
     QMetaProperty userProperty(const QMetaObject *metaObject) const;
+    QList<QMetaProperty> searchProperties(const QMetaObject *metaObject) const;
     QList<QMetaProperty> dataProperties(const QMetaObject *metaObject) const;
 
 private:

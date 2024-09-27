@@ -13,6 +13,9 @@ struct DataTableModelLink
     QString className;
     QString foreignProperty;
     QString indexProperty;
+
+    QString alias;
+    int linkMode = DataTableModel::InnerLink;
 };
 
 class DataTableModelPrivate : public Orm::DataSearch
@@ -46,6 +49,8 @@ public:
     QVector<DataTableModelLink> links;
 
 private:
+    QString propertyName(int index) const;
+
     mutable QHash<int, Data *> m_items;
     int m_totalCount;
 };

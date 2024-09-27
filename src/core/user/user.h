@@ -2,67 +2,70 @@
 #define SYSTEMUS_USER_H
 
 #include <SystemusCore/global.h>
-#include <SystemusCore/privilege.h>
+#include <SystemusCore/internaldata.h>
 
 namespace Systemus {
 
 class UserProfile;
-class Role;
-class Group;
+class UserRole;
+class UserGroup;
 
-class SYSTEMUS_CORE_EXPORT User : public PrivilegedData
+class SYSTEMUS_CORE_EXPORT User : public InternalData
 {
     Q_GADGET
+    Q_PROPERTY(QString login READ login WRITE setLogin)
     Q_PROPERTY(QString password READ password WRITE setPassword)
-    Q_PROPERTY(bool active READ isActive WRITE setActive)
+    Q_PROPERTY(int status READ status WRITE setStatus)
     Q_PROPERTY(UserProfile profile READ profile STORED false)
-    Q_CLASSINFO("fields", "profileId(int), roleId(int)")
+    Q_CLASSINFO("properties", "roleId(int, required)")
+    Q_CLASSINFO("table", "SUsers")
 
 public:
-    User();
-    User(const User &other);
+    enum Status {
+        UnknownStatus,
+        ActiveStatus,
+        InactiveStatus
+    };
 
-    User &operator=(const User &other);
+    User();
+    User(const User &other) = default;
+
+    QString login() const;
+    void setLogin(const QString &login);
 
     QString password() const;
     void setPassword(const QString &password, bool encrypt = false);
 
-    bool isActive() const;
-    void setActive(bool active = true);
+    int status() const;
+    void setStatus(int status);
 
     UserProfile profile() const;
     void setProfile(const UserProfile &profile);
 
     bool hasRole(const QString &name) const;
-    Role role() const;
-    void setRole(const Role &role);
+    UserRole role() const;
+    void setRole(const UserRole &role);
 
-    bool inGroup(const QString &name) const;
-    QList<Group> groups() const;
+    bool postGet() override;
 
-    bool getExtras(ExtraType type) override;
-    bool insertExtras(ExtraType type) override;
-    bool updateExtras(ExtraType type) override;
-
-    bool saveReadOnlyProperty(const QString &name, const QVariant &value) override;
+    static User fromLogin(const QString &login);
 
 private:
     S_DATA(User)
 };
 
-class SYSTEMUS_CORE_EXPORT UserProfile : public Data
+class SYSTEMUS_CORE_EXPORT UserProfile : public InternalData
 {
     Q_GADGET
     Q_PROPERTY(QString name READ name WRITE setName)
     Q_PROPERTY(QString firstName READ firstName WRITE setFirstName)
     Q_PROPERTY(QString fullName READ fullName USER true STORED false)
-    Q_CLASSINFO("table", "Profiles")
+    Q_CLASSINFO("properties", "userId(int, required)")
+    Q_CLASSINFO("table", "SUserProfiles")
 
 public:
     UserProfile();
-    UserProfile(const UserProfile &other);
-
-    UserProfile &operator=(const UserProfile &other);
+    UserProfile(const UserProfile &other) = default;
 
     QString name() const;
     void setName(const QString &name);
@@ -76,9 +79,37 @@ private:
     S_DATA(UserProfile)
 };
 
+class DescriptiveUserDataPrivate;
+class SYSTEMUS_CORE_EXPORT DescriptiveUserData : public InternalData
+{
+    Q_GADGET
+    Q_PROPERTY(QString name READ name WRITE setName)
+    Q_PROPERTY(QString description READ description WRITE setDescription)
+
+public:
+    DescriptiveUserData();
+    DescriptiveUserData(const DescriptiveUserData &other) = default;
+
+    QString name() const;
+    void setName(const QString &name);
+
+    QString description() const;
+    void setDescription(const QString &desc);
+};
+
+class SYSTEMUS_CORE_EXPORT UserRole : public DescriptiveUserData
+{
+    Q_GADGET
+    Q_CLASSINFO("table", "SUserRoles")
+
+private:
+    S_DATA(UserRole)
+};
+
 }
 
 Q_DECLARE_METATYPE(Systemus::User)
 Q_DECLARE_METATYPE(Systemus::UserProfile)
+Q_DECLARE_METATYPE(Systemus::UserRole)
 
 #endif // SYSTEMUS_USER_H

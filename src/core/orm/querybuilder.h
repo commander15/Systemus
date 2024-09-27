@@ -29,6 +29,7 @@ public:
 
     static QString whereStatement(const Data *data, const MetaTable &table);
 
+private:
     static QSqlDriver *sqlDriver();
 };
 

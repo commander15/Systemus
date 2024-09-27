@@ -195,6 +195,18 @@ QSqlRecord Data::toSqlRecord() const
     return (d->ormData ? d->ormData->toSqlRecord() : QSqlRecord());
 }
 
+QSqlRecord Data::modelRecord() const
+{
+    S_D(const Data);
+    return d->modelRecord;
+}
+
+void Data::setModelRecord(const QSqlRecord &record)
+{
+    S_D(Data);
+    d->modelRecord = record;
+}
+
 void Data::initData()
 {
     S_D(Data);

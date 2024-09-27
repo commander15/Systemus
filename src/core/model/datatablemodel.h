@@ -15,8 +15,16 @@ class SYSTEMUS_CORE_EXPORT DataTableModel : public QSqlQueryModel
     Q_OBJECT
 
 public:
+    enum LinkMode {
+        InnerLink,
+        LeftLink,
+        RightLink
+    };
+
     explicit DataTableModel(QObject *parent = nullptr);
     virtual ~DataTableModel();
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
     template<typename T> T inline item() const;
     Systemus::Data item() const;
@@ -61,10 +69,10 @@ public:
     QStringList linkedClassNames() const;
     template<typename T> inline void linkTo();
     template<typename T> inline void linkTo(const QString &foreignProperty);
-    template<typename T> inline void linkTo(const QString &foreignProperty, const QString &indexProperty);
-    void linkTo(const QString &className);
-    void linkTo(const QString &className, const QString &foreignProperty);
-    void linkTo(const QString &className, const QString &foreignProperty, const QString &indexProperty);
+    template<typename T> inline void linkTo(const QString &foreignProperty, const QString &indexProperty, LinkMode mode = InnerLink);
+    void linkTo(const QString &className, LinkMode mode = InnerLink);
+    void linkTo(const QString &className, const QString &foreignProperty, LinkMode mode = InnerLink);
+    void linkTo(const QString &className, const QString &foreignProperty, const QString &indexProperty, LinkMode mode = InnerLink);
 
 protected:
     enum StatementType {
@@ -101,8 +109,8 @@ inline void DataTableModel::linkTo(const QString &foreignProperty)
 { linkTo(MetaTable::fromType<T>().className(), foreignProperty); }
 
 template<typename T>
-inline void DataTableModel::linkTo(const QString &foreignProperty, const QString &indexProperty)
-{ linkTo(MetaTable::fromType<T>().className(), foreignProperty, indexProperty); }
+inline void DataTableModel::linkTo(const QString &foreignProperty, const QString &indexProperty, LinkMode mode)
+{ linkTo(MetaTable::fromType<T>().className(), foreignProperty, indexProperty, mode); }
 
 }
 }

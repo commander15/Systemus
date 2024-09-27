@@ -1,10 +1,8 @@
 #include "logindialog.h"
 #include "ui_logindialog.h"
 
-#include <SystemusCore/authenticator.h>
 #include <SystemusCore/system.h>
-
-#include <QtSql/qsqldatabase.h>
+#include <SystemusCore/authenticator.h>
 
 #include <QtCore/qversionnumber.h>
 #include <QtCore/qtimer.h>
@@ -14,17 +12,19 @@ namespace Systemus {
 LoginDialog::LoginDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::LoginDialog),
-    _showOnLogOut(false),
-    _cleanTimer(new QTimer(this))
+    m_showOnLogOut(false),
+    m_cleanTimer(new QTimer(this))
 {
     ui->setupUi(this);
 
     System *system = System::instance();
+    changeLogo();
+    connect(system, &System::logoDataChanged, this, &LoginDialog::changeLogo);
 
     QPixmap logoPixmap;
     logoPixmap.loadFromData(system->logoData(), "PNG");
     if (!logoPixmap.isNull())
-        ui->systemLogoOutput->setPixmap(logoPixmap.scaled(320, 80, Qt::KeepAspectRatio));
+        ui->logoOutput->setPixmap(logoPixmap.scaled(320, 80, Qt::KeepAspectRatio));
 
     ui->loginInput->addAction(ui->actionLogin, QLineEdit::LeadingPosition);
 
@@ -32,31 +32,17 @@ LoginDialog::LoginDialog(QWidget *parent) :
     ui->passwordInput->addAction(ui->actionShowPassword, QLineEdit::TrailingPosition);
     connect(ui->actionShowPassword, &QAction::triggered, this, &LoginDialog::togglePasswordVisibility);
 
-    connect(ui->connectButton, &QAbstractButton::clicked, this, &LoginDialog::logIn);
-    connect(ui->settingsButton, &QAbstractButton::toggled, this, &LoginDialog::toggleView);
+    connect(ui->logInButton, &QAbstractButton::clicked, this, &LoginDialog::logIn);
 
-    QSqlDatabase db = QSqlDatabase::database();
-    ui->databaseHostInput->setText(db.hostName());
-    ui->databasePortInput->setValue(db.port());
-    ui->databaseUserInput->setText(db.userName());
-    ui->databasePasswordInput->setText(db.password());
-    ui->databaseNameInput->setText(db.databaseName());
+    ui->errorOutput->clear();
 
-    connect(ui->databaseSaveButton, &QAbstractButton::clicked, this, &LoginDialog::saveDatabaseSettings);
-    connect(ui->databaseTestButton, &QAbstractButton::clicked, this, &LoginDialog::testDatabaseConnection);
-
-    ui->messageTextOutput->clear();
-
-    _cleanTimer->setInterval(3000);
-    _cleanTimer->setSingleShot(true);
-    connect(_cleanTimer, &QTimer::timeout, this, &LoginDialog::clearError);
+    m_cleanTimer->setInterval(3000);
+    m_cleanTimer->setSingleShot(true);
+    connect(m_cleanTimer, &QTimer::timeout, this, &LoginDialog::hideError);
 
     Authenticator *auth = Authenticator::instance();
     connect(auth, &Authenticator::loggedIn, this, [this](const User &) { accept(); });
-    connect(auth, &Authenticator::logInError, this, &LoginDialog::processError);
-
-    connect(system, &System::online, this, &LoginDialog::updateSystemData);
-    connect(system, &System::online, this, &QWidget::show);
+    connect(auth, &Authenticator::logInError, this, &LoginDialog::showError);
 
     connect(this, &QDialog::rejected, qApp, &QCoreApplication::quit);
 }
@@ -66,9 +52,14 @@ LoginDialog::~LoginDialog()
     delete ui;
 }
 
+void LoginDialog::showOnLogOut()
+{
+    setShowOnLogOut(true);
+}
+
 void LoginDialog::setShowOnLogOut(bool show)
 {
-    if (_showOnLogOut == show)
+    if (m_showOnLogOut == show)
         return;
 
     Authenticator *auth = Authenticator::instance();
@@ -77,32 +68,30 @@ void LoginDialog::setShowOnLogOut(bool show)
     else
         disconnect(auth, &Authenticator::loggedOut, this, &QWidget::show);
 
-    _showOnLogOut = show;
-}
-
-void LoginDialog::showLogin()
-{
-    toggleView(false);
-    show();
-}
-
-void LoginDialog::showSettings()
-{
-    toggleView(true);
-    show();
-}
-
-void LoginDialog::done(int r)
-{
-    ui->passwordInput->clear();
-    QDialog::done(r);
+    m_showOnLogOut = show;
 }
 
 void LoginDialog::setVisible(bool visible)
 {
-    if (visible)
-        toggleView(!System::instance()->isDatabaseOpen());
     QDialog::setVisible(visible);
+
+    if (ui->loginInput->text().isEmpty())
+        ui->loginInput->setFocus();
+    else
+        ui->passwordInput->setFocus();
+}
+
+void LoginDialog::changeLogo()
+{
+    const QByteArray logoData = System::instance()->logoData();
+
+    QPixmap pixmap;
+    if (!logoData.isEmpty()) {
+        pixmap.loadFromData(logoData);
+    } else {
+        pixmap.load(":/systemus/icons/systemus_full.png");
+    }
+    ui->logoOutput->setPixmap(pixmap.scaled(ui->logoOutput->size(), Qt::KeepAspectRatio));
 }
 
 void LoginDialog::togglePasswordVisibility()
@@ -119,70 +108,28 @@ void LoginDialog::togglePasswordVisibility()
 
 void LoginDialog::logIn()
 {
+    ui->logInButton->setEnabled(false);
+
     Authenticator *auth = Authenticator::instance();
     auth->logIn(ui->loginInput->text(), ui->passwordInput->text());
+
+    ui->passwordInput->clear();
+
+    ui->loginInput->setEnabled(true);
 }
 
-void LoginDialog::processError(const AuthenticationError &error)
+void LoginDialog::showError(const AuthenticationError &error)
 {
-    ui->messageTextOutput->setText(error.errorString());
-    _cleanTimer->start();
+    ui->errorOutput->setText(error.errorString());
+    ui->stackedWidget->setCurrentIndex(1);
+    m_cleanTimer->start();
+
+    ui->passwordInput->setFocus();
 }
 
-void LoginDialog::clearError()
+void LoginDialog::hideError()
 {
-    ui->messageTextOutput->clear();
-}
-
-void LoginDialog::toggleView(bool settings)
-{
-    ui->stackedWidget->setCurrentIndex(settings ? 1 : 0);
-
-    if (settings)
-        ui->tabWidget->setTabVisible(0, System::instance()->isDatabaseOpen());
-}
-
-void LoginDialog::saveDatabaseSettings()
-{
-    QSqlDatabase db = QSqlDatabase::database();
-    db.setHostName(ui->databaseHostInput->text());
-    db.setPort(ui->databasePortInput->value());
-    db.setUserName(ui->databaseUserInput->text());
-    db.setPassword(ui->databasePasswordInput->text());
-    db.setDatabaseName(ui->databaseNameInput->text());
-
-    System::instance()->saveDatabaseSettings();
-    updateSystemData();
-}
-
-void LoginDialog::testDatabaseConnection()
-{
-    const QString connection = QStringLiteral("SYSTEMUS_TEST_CONNECTION");
-    {
-        QSqlDatabase db = QSqlDatabase::addDatabase(QSqlDatabase::database().driverName(), connection);
-        db.setHostName(ui->databaseHostInput->text());
-        db.setPort(ui->databasePortInput->value());
-        db.setUserName(ui->databaseUserInput->text());
-        db.setPassword(ui->databasePasswordInput->text());
-        db.setDatabaseName(ui->databaseNameInput->text());
-
-        if (db.open()) {
-            ui->databaseTestResultOutput->setText(tr("Connection succeded !"));
-            ui->databaseTestResultOutput->setStyleSheet("color: green");
-            db.close();
-        } else {
-            ui->databaseTestResultOutput->setText(tr("Connection failed !"));
-            ui->databaseTestResultOutput->setStyleSheet("color: red");
-        }
-    }
-    QSqlDatabase::removeDatabase(connection);
-}
-
-void LoginDialog::updateSystemData()
-{
-    System *system = System::instance();
-    ui->systemNameOutput2->setText(system->name());
-    ui->systemVersionOutput->setText(system->version().toString());
+    ui->stackedWidget->setCurrentIndex(0);
 }
 
 }

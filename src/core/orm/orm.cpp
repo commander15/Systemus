@@ -1,11 +1,7 @@
 #include "orm.h"
 #include "orm_p.h"
 
-//#include <SystemusCore/user.h>
-//#include <SystemusCore/role.h>
-//#include <SystemusCore/group.h>
-//#include <SystemusCore/privilege.h>
-//#include <SystemusCore/permission.h>
+#include <SystemusCore/user.h>
 #include <SystemusCore/ormbackend.h>
 #include <SystemusCore/metamapper.h>
 #include <SystemusCore/metatable.h>
@@ -25,17 +21,21 @@ namespace Orm {
 
 void init()
 {
-    //sRegisterType<User>();
-    //sRegisterType<UserProfile>();
-    //sRegisterType<Role>();
-    //sRegisterType<Group>();
-    //sRegisterType<Privilege>();
-    //sRegisterType<Permission>();
+    MetaTable::registerClass<User>();
+    MetaTable::registerClass<UserProfile>();
+    MetaTable::registerClass<UserRole>();
+    //MetaTable::registerClass<UserGroup>();
+    //MetaTable::registerClass<Privilege>();
+    //MetaTable::registerClass<Permission>();
 }
 
 QString formatExpression(const QString &expression, const QString &contextClassName)
 {
-    static const QRegularExpression regExp("(?!\\b(?:" + OrmPrivate::sqlKeywords().join('|') + ")\\b|\\b'[^\\']*'\\b)(?<!'\\b)(\\b[A-Za-z_][A-Za-z0-9_]*\\b)(?:\\.(\\b[a-z_][A-Za-z0-9_]*\\b))?");
+    const MetaTable contextTable = MetaTable::fromClassName(contextClassName);
+
+    static const QRegularExpression regExp("({{\\s*[A-Za-z_][A-Za-z0-9_\\.]*\\s*}})");
+    const int matchIndex = 1;
+
     QRegularExpressionMatchIterator it = regExp.globalMatch(expression, 0, QRegularExpression::NormalMatch);
 
     struct Replacement {
@@ -46,45 +46,32 @@ QString formatExpression(const QString &expression, const QString &contextClassN
     };
     QList<Replacement> replacements;
 
-    MetaMapper::MapOptions replacementOptions = MetaMapper::EscapeIdentifiers;
-
     while (it.hasNext()) {
         const QRegularExpressionMatch match = it.next();
 
-        const QString first = match.captured(1);
-        const QString second = match.captured(2);
+        if (!match.hasMatch() || !match.hasCaptured(matchIndex))
+            continue;
 
         Replacement r;
+        r.pos = match.capturedStart(matchIndex);
+        r.size = match.capturedLength(matchIndex);
 
-        if (!first.isEmpty() && !second.isEmpty()) {
-            const MetaTable table = MetaTable::fromClassName(first);
+        r.match = match.captured(matchIndex);
+        r.replacement = r.match;
+        r.replacement.remove(' ');
+        r.replacement.remove("{{");
+        r.replacement.remove("}}");
 
-            r.pos = match.capturedStart(1);
-            r.size = match.capturedLength(1);
-            r.match = first;
-            r.replacement = MetaMapper::tableName(table, replacementOptions);
-            replacements.append(r);
-
-            r.pos = match.capturedStart(2);
-            r.size = match.capturedLength(2);
-            r.match = second;
-            r.replacement = MetaMapper::fieldName(second, table, replacementOptions);
-            replacements.append(r);
-        } else if (!first.isEmpty()) {
-            r.pos = match.capturedStart(1);
-            r.size = match.capturedLength(1);
-            r.match = first;
-
-            if (first.at(0).isUpper()) {
-                r.replacement = MetaMapper::tableName(first, replacementOptions);
-            } else {
-                const MetaTable table = MetaTable::fromClassName(contextClassName);
-                //replacementOptions |= MetaMapper::IncludeTableName;
-                r.replacement = MetaMapper::fieldName(first, table, replacementOptions);
-            }
-
-            replacements.append(r);
+        if (r.replacement.contains('.')) {
+            const QStringList items = r.replacement.split('.', Qt::SkipEmptyParts);
+            r.replacement = MetaMapper::fieldName(items.last(), items.first(), MetaMapper::IncludeTableName);
+        } else if (r.replacement.at(0).isUpper()) {
+            r.replacement = MetaMapper::tableName(r.replacement);
+        } else {
+            r.replacement = MetaMapper::fieldName(r.replacement, contextTable);
         }
+
+        replacements.append(r);
     }
 
     QString result;
@@ -138,6 +125,8 @@ QString deleteStatement(const MetaTable &table)
 
 QStringList OrmPrivate::sqlKeywords()
 {
+    //ToDo: remove this function and the resource file linked, no longer used
+
     QStringList keywords;
 
     QFile file(":/systemus/sql_keywords.txt");

@@ -1,61 +1,43 @@
 #ifndef SYSTEMUS_USER_P_H
 #define SYSTEMUS_USER_P_H
 
-#include <SystemusCore/user.h>
-#include <SystemusCore/role.h>
-#include <SystemusCore/group.h>
+#include "user.h"
 
-#include <SystemusCore/private/privilege_p.h>
+#include <SystemusCore/private/internaldata_p.h>
 
 namespace Systemus {
 
-class UserProfilePrivate : public DefaultDataPrivate
+class UserPrivate : public InternalDataPrivate
 {
 public:
-    UserProfilePrivate() = default;
-    UserProfilePrivate(const UserProfilePrivate &other) = default;
-
-    bool equals(const DataPrivate *o) const override;
-
-    void clear() override;
-
-    UserProfilePrivate *clone() const override;
-
-    QString name;
-    QString firstName;
-};
-
-class UserPrivate : public PrivilegedDataPrivate
-{
-public:
-    UserPrivate();
-    UserPrivate(const UserPrivate &other) = default;
-
     static bool checkPassword(const QString &input, const QString &password);
     static QString encryptPassword(const QString &password);
-
-    bool hasPrivilege(const QString &name) const override;
-
-    bool hasPermission(const QString &name) const override;
-
-    bool equals(const DataPrivate *o) const override;
-
-    void clear() override;
 
     UserPrivate *clone() const override;
 
     int dataType() const override
     { return UserDataType; }
 
+    QString login;
     QString password;
-    bool active = false;
+    int status = 0;
 
-    QDate lastLogDate;
-    QTime lastLogTime;
+    UserProfile profile;
+    UserRole role;
+};
 
-    OneToOneRelation<UserProfile> profile;
-    ManyToOneRelation<Role> role;
-    ManyToManyRelation<Group> groups;
+class UserProfilePrivate : public InternalDataPrivate
+{
+public:
+    QString name;
+    QString firstName;
+};
+
+class DescriptiveUserDataPrivate : public InternalDataPrivate
+{
+public:
+    QString name;
+    QString description;
 };
 
 }

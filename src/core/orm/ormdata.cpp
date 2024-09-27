@@ -3,6 +3,7 @@
 
 #include <SystemusCore/orm.h>
 #include <SystemusCore/ormbackend.h>
+#include <SystemusCore/metamapper.h>
 #include <SystemusCore/private/debug_p.h>
 
 #include <QtSql/qsqldatabase.h>
@@ -71,8 +72,8 @@ bool Data::get()
 bool Data::getByPrimary(const QVariant &value, bool full)
 {
     const QString property = metaTable().primaryPropertyName();
-    const QString filter = QStringLiteral("%1 = %2").arg(property, formatValue(value));
-    return getByFilter(filter, full);
+    const QString filter = QStringLiteral("{{ %1 }} = %2");
+    return getByFilter(filter.arg(property, formatValue(value)), full);
 }
 
 bool Data::getByFilter(const QString &filter, bool full)
@@ -179,7 +180,7 @@ bool Data::deleteData()
     const QString statement = QueryBuilder::deleteStatement(table) + ' ' + QueryBuilder::whereStatement(this, table);
 
     bool ok;
-    QSqlQuery query = execQuery(statement, &ok);
+    execQuery(statement, &ok);
 
     return (ok ? postDelete() : false);
 }
@@ -378,7 +379,7 @@ QString DataSearch::groupByClause() const
     QStringList fields;
     fields.reserve(m_groupProperties.size());
     std::transform(m_groupProperties.begin(), m_groupProperties.end(), std::back_inserter(fields), [this](const QString &property) {
-        return formatExpression(property, m_className);
+        return MetaMapper::fieldName(property, m_className);
     });
 
     if (hasGroupByClause())
@@ -399,7 +400,7 @@ QString DataSearch::orderByClause() const
 
     QStringList clauses;
     for (int i(0); i < m_sortProperties.size(); ++i) {
-        const QString field = formatExpression(m_sortProperties.at(i), m_className);
+        const QString field = MetaMapper::fieldName(m_sortProperties.at(i), m_className, MetaMapper::IncludeTableName|MetaMapper::EscapeIdentifiers);
         const QString order = (m_sortOrders.at(i) == Qt::AscendingOrder ? "ASC" : "DESC");
         clauses.append(field + ' ' + order);
     }

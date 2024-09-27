@@ -93,6 +93,21 @@ QList<SecretProperty> Backend::secretPropertiesFromString(const QString &str, co
     return properties;
 }
 
+QList<SecretProperty> Backend::searchPropertiesFromMetaObject(const QMetaObject *metaObject, QList<int> *metaIndexes) const
+{
+    QList<SecretProperty> properties;
+
+    QList<QMetaProperty> metaProperties = searchProperties(metaObject);
+    for (const QMetaProperty &property : metaProperties) {
+        properties.append(SecretProperty(property));
+
+        if (metaIndexes)
+            metaIndexes->append(property.propertyIndex());
+    }
+
+    return properties;
+}
+
 QString Backend::foreignPropertyNameFromMetaObject(const QMetaObject *metaObject) const
 {
     const int index = metaObject->indexOfClassInfo("foreignProperty");
@@ -274,6 +289,27 @@ QMetaProperty Backend::userProperty(const QMetaObject *metaObject) const
     return (isDataProperty(property) ? property : QMetaProperty());
 }
 
+QList<QMetaProperty> Backend::searchProperties(const QMetaObject *metaObject) const
+{
+    const int index = metaObject->indexOfClassInfo("searchProperties");
+    if (index == -1)
+        return QList<QMetaProperty>();
+
+    QList<QMetaProperty> searchProperties;
+
+    QString properties(metaObject->classInfo(index).value());
+    properties.remove(' ');
+
+    QStringList propertyNames = properties.split(',', Qt::SkipEmptyParts);
+    for (const QString &propertyName : propertyNames) {
+        int index = metaObject->indexOfProperty(propertyName.toStdString().c_str());
+        if (index >= 0)
+            searchProperties.append(metaObject->property(index));
+    }
+
+    return searchProperties;
+}
+
 QList<QMetaProperty> Backend::dataProperties(const QMetaObject *metaObject) const
 {
     QList<QMetaProperty> properties;
@@ -302,7 +338,9 @@ QString SystemusBackend::classNameFromTableName(const QString &tableName) const
 
 QString SystemusBackend::foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const
 {
-    return className.section("::", -1) + '_' + fieldNameFromPropertyName(propertyName, className);
+    QString prop = propertyName;
+    prop[0] = prop.at(0).toUpper();
+    return className.section("::", -1).toLower() + prop;
 }
 
 QString SystemusBackend::propertyNameFromFieldName(const QString &fieldName, const QString &tableName) const

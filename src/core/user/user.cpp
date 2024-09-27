@@ -11,20 +11,20 @@
 namespace Systemus {
 
 User::User() :
-    PrivilegedData(new UserPrivate)
-{
-    init();
-}
-
-User::User(const User &other) :
-    PrivilegedData(other, false)
+    InternalData(new UserPrivate)
 {
 }
 
-User &User::operator=(const User &other)
+QString User::login() const
 {
-    PrivilegedData::operator=(other);
-    return *this;
+    S_D(const User);
+    return d->login;
+}
+
+void User::setLogin(const QString &login)
+{
+    S_D(User);
+    d->login = login;
 }
 
 QString User::password() const
@@ -36,22 +36,23 @@ QString User::password() const
 void User::setPassword(const QString &password, bool encrypt)
 {
     S_D(User);
+
     if (encrypt)
         d->password = d->encryptPassword(password);
     else
         d->password = password;
 }
 
-bool User::isActive() const
+int User::status() const
 {
     S_D(const User);
-    return d->active;
+    return d->status;
 }
 
-void User::setActive(bool active)
+void User::setStatus(int status)
 {
     S_D(User);
-    d->active = active;
+    d->status = status;
 }
 
 UserProfile User::profile() const
@@ -69,99 +70,36 @@ void User::setProfile(const UserProfile &profile)
 bool User::hasRole(const QString &name) const
 {
     S_D(const User);
-    return d->role->name() == name;
+    return d->role.name() == name;
 }
 
-Role User::role() const
+UserRole User::role() const
 {
     S_D(const User);
     return d->role;
 }
 
-void User::setRole(const Role &role)
+void User::setRole(const UserRole &role)
 {
     S_D(User);
     d->role = role;
 }
 
-bool User::inGroup(const QString &name) const
-{
-    S_D(const User);
-    for (const Group &group : d->groups)
-        if (group.name() == name)
-            return true;
-    return false;
-}
-
-QList<Group> User::groups() const
-{
-    S_D(const User);
-    return d->groups;
-}
-
-bool User::getExtras(ExtraType type)
-{
-    if (type == PostExtra) {
-        S_D(User);
-        return PrivilegedData::getExtras(type) && d->profile.get(this) && d->role.get(this) && d->groups.get(this);
-    } else
-        return PrivilegedData::getExtras(type);
-}
-
-bool User::insertExtras(ExtraType type)
+bool User::postGet()
 {
     S_D(User);
-    if (type == PreExtra) {
-        if (PrivilegedData::insertExtras(type) && d->profile.insert(this)) {
-            d->setProperty("profileId", d->profile->id());
-            d->setProperty("roleId", d->role->id());
-            return true;
-        } else
-            return false;
-    } else if (type == PostExtra) {
-        return PrivilegedData::insertExtras(type) && d->groups.insert(this);
-    }
-
-    return PrivilegedData::insertExtras(type);
+    d->profile.getByFilter(defaultFilter());
+    return d->role.getByPrimary(readProperty("roleId"));
 }
 
-bool User::updateExtras(ExtraType type)
+User User::fromLogin(const QString &login)
 {
-    S_D(User);
-    if (type == PreExtra)
-        return PrivilegedData::updateExtras(type) && d->profile.update(this);
-
-    return PrivilegedData::updateExtras(type);
-}
-
-bool User::saveReadOnlyProperty(const QString &name, const QVariant &value)
-{
-    S_D(User);
-    if (name == "lastLogDate")
-        d->lastLogDate = value.toDate();
-    else if (name == "lastLogTime")
-        d->lastLogTime = value.toTime();
-    else
-        return PrivilegedData::saveReadOnlyProperty(name, value);
-
-    return true;
+    return fromFilter("{{ login }} = " + formatValue(login));
 }
 
 UserProfile::UserProfile() :
-    Data(new UserProfilePrivate)
+    InternalData(new UserProfilePrivate)
 {
-    init();
-}
-
-UserProfile::UserProfile(const UserProfile &other) :
-    Data(other, false)
-{
-}
-
-UserProfile &UserProfile::operator=(const UserProfile &other)
-{
-    Data::operator=(other);
-    return *this;
 }
 
 QString UserProfile::name() const
@@ -194,10 +132,33 @@ QString UserProfile::fullName() const
     return d->name + (!d->firstName.isEmpty() ? ' ' + d->firstName : QString());
 }
 
-UserPrivate::UserPrivate() :
-    PrivilegedDataPrivate("User"),
-    groups("UserGroup")
+DescriptiveUserData::DescriptiveUserData() :
+    InternalData(new DescriptiveUserDataPrivate)
 {
+}
+
+QString DescriptiveUserData::name() const
+{
+    S_D(const DescriptiveUserData);
+    return d->name;
+}
+
+void DescriptiveUserData::setName(const QString &name)
+{
+    S_D(DescriptiveUserData);
+    d->name = name;
+}
+
+QString DescriptiveUserData::description() const
+{
+    S_D(const DescriptiveUserData);
+    return d->description;
+}
+
+void DescriptiveUserData::setDescription(const QString &desc)
+{
+    S_D(DescriptiveUserData);
+    d->description = desc;
 }
 
 bool UserPrivate::checkPassword(const QString &input, const QString &password)
@@ -210,77 +171,9 @@ QString UserPrivate::encryptPassword(const QString &password)
     return QString::fromStdString(bcrypt::generateHash(password.toStdString(), 12));
 }
 
-bool UserPrivate::hasPrivilege(const QString &name) const
-{
-    if (PrivilegedDataPrivate::hasPrivilege(name))
-        return true;
-    else if (role->hasPrivilege(name))
-        return true;
-    else {
-        for (const Group &group : groups)
-            if (group.hasPrivilege(name))
-                return true;
-        return false;
-    }
-}
-
-bool UserPrivate::hasPermission(const QString &name) const
-{
-    if (PrivilegedDataPrivate::hasPermission(name))
-        return true;
-    else if (role->hasPermission(name))
-        return true;
-    else {
-        for (const Group &group : groups)
-            if (group.hasPermission(name))
-                return true;
-        return false;
-    }
-}
-
-bool UserPrivate::equals(const DataPrivate *o) const
-{
-    const UserPrivate *other = static_cast<const UserPrivate *>(o);
-    return password == other->password
-           && active == other->active
-           && profile == other->profile
-           && role == other->role
-           && groups == other->groups
-           && PrivilegedDataPrivate::equals(o);
-}
-
-void UserPrivate::clear()
-{
-    password.clear();
-    active = false;
-    role.clear();
-    groups.clear();
-    PrivilegedDataPrivate::clear();
-}
-
 UserPrivate *UserPrivate::clone() const
 {
     return new UserPrivate(*this);
-}
-
-bool UserProfilePrivate::equals(const DataPrivate *o) const
-{
-    const UserProfilePrivate *other = static_cast<const UserProfilePrivate *>(o);
-    return name == other->name
-           && firstName == other->firstName
-           && DefaultDataPrivate::equals(o);
-}
-
-void UserProfilePrivate::clear()
-{
-    name.clear();
-    firstName.clear();
-    DefaultDataPrivate::clear();
-}
-
-UserProfilePrivate *UserProfilePrivate::clone() const
-{
-    return new UserProfilePrivate(*this);
 }
 
 }
