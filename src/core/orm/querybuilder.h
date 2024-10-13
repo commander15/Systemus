@@ -17,17 +17,21 @@ class MetaTable;
 class SYSTEMUS_CORE_EXPORT QueryBuilder
 {
 public:
-    static QString selectStatement(const QMetaObject *metaObject);
     static QString selectStatement(const QString &className);
     static QString selectStatement(const MetaTable &table);
 
+    static QString insertStatement(const Data *data);
     static QString insertStatement(const Data *data, const MetaTable &table);
 
+    static QString updateStatement(const Data *data);
     static QString updateStatement(const Data *data, const MetaTable &table);
 
+    static QString deleteStatement(const QString &className);
     static QString deleteStatement(const MetaTable &table);
 
+    static QString whereStatement(const Data *data);
     static QString whereStatement(const Data *data, const MetaTable &table);
+    static QString whereStatement(const QVariant &primaryValue, const MetaTable &table);
 
 private:
     static QSqlDriver *sqlDriver();

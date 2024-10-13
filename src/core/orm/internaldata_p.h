@@ -13,6 +13,16 @@ public:
     int id = 0;
 };
 
+class DescriptiveDataPrivate : public InternalDataPrivate
+{
+public:
+    QString name;
+    QString description;
+
+    QDate creationDate;
+    QTime creationTime;
+};
+
 }
 
 #endif // SYSTEMUS_INTERNALDATA_P_H

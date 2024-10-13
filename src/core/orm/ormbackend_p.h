@@ -14,10 +14,6 @@ public:
 
     QString name() const override;
 
-    QString classNameFromTableName(const QString &tableName) const override;
-    QString foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const override;
-    QString propertyNameFromFieldName(const QString &fieldName, const QString &tableName) const override;
-
     QString tableNameFromClassName(const QString &className) const override;
     QString foreignFieldNameFromPropertyName(const QString &propertyName, const QString &className) const override;
     QString fieldNameFromPropertyName(const QString &propertyName, const QString &className) const override;

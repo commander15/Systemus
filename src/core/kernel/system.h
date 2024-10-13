@@ -2,6 +2,7 @@
 #define SYSTEMUS_SYSTEM_H
 
 #include <SystemusCore/global.h>
+#include <SystemusCore/data.h>
 
 #include <QtCore/qobject.h>
 #include <QtCore/qversionnumber.h>
@@ -16,6 +17,9 @@ namespace Systemus {
 class SYSTEMUS_CORE_EXPORT SystemData
 {
 public:
+    SystemData() = default;
+    virtual ~SystemData() = default;
+
     QByteArray logoData;
     QString name;
     QVersionNumber version;
@@ -25,13 +29,17 @@ public:
 class SYSTEMUS_CORE_EXPORT System : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
+    Q_PROPERTY(QByteArray logoData READ logoData WRITE setLogoData NOTIFY logoDataChanged)
+    Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged USER true)
     Q_PROPERTY(QString version READ versionString WRITE setVersionString NOTIFY versionChanged)
-    Q_PROPERTY(QDateTime now READ now)
-    Q_PROPERTY(int heartbeatInterval READ heartbeatInterval WRITE setHeartbeatInterval)
+    Q_PROPERTY(QDateTime now READ now STORED false)
+    Q_PROPERTY(int heartbeatInterval READ heartbeatInterval WRITE setHeartbeatInterval STORED false)
+    Q_CLASSINFO("logoDataField", "logo")
 
 public:
     ~System();
+
+    int id() const;
 
     QByteArray logoData() const;
     Q_SLOT void setLogoData(const QByteArray &data);
@@ -57,6 +65,8 @@ public:
     Q_SLOT void sync();
     Q_SIGNAL void notify();
 
+    //void postNotification(const SystemNotification &notification);
+    //Q_SIGNAL void notificationPosted(const SystemNotification &notification);
     //Q_SIGNAL void notificationReceived(const SystemNotification &notification);
 
     static System *instance();
@@ -71,14 +81,17 @@ private:
     void setVersionString(const QString &version);
 
     QScopedPointer<SystemData> d_ptr;
-    static QScopedPointer<System> s_instance;
 
     friend class Authenticator;
 };
 
+// ToDo: move on dedicated files
 class SYSTEMUS_CORE_EXPORT SystemNotificationData : public QSharedData
 {
 public:
+    SystemNotificationData() = default;
+    virtual ~SystemNotificationData() = default;
+
     int id = 0;
     QString title;
     QString text;
@@ -88,7 +101,7 @@ public:
     QString type;
 };
 
-class SYSTEMUS_CORE_EXPORT SystemNotification
+class SYSTEMUS_CORE_EXPORT SystemNotification /* public Orm::Data */
 {
 public:
     /*

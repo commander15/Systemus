@@ -28,10 +28,6 @@ public:
     bool isValid() const override;
     bool isEmpty() const override;
 
-    void fill(const AbstractData &other) override;
-    void fill(const QJsonObject &object) override;
-    void fill(const QSqlRecord &record) override;
-
     bool refersTo(const AbstractData &other) const override;
     bool sameAs(const AbstractData &other) const override;
 
@@ -70,6 +66,10 @@ protected:
     bool isPropertyNull(const QString &name) const override;
     QVariant readProperty(const QString &name) const override;
     bool writeProperty(const QString &name, const QVariant &value) override;
+
+    void fillWithData(const AbstractData &other) override;
+    void fillWithJsonObject(const QJsonObject &object) override;
+    void fillWithSqlRecord(const QSqlRecord &record) override;
 
     void processError(const QSqlError &error) override;
 

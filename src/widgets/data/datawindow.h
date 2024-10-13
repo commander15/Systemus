@@ -9,6 +9,7 @@
 namespace Systemus {
 class Data;
 class DataEdit;
+class DataEditDialog;
 
 class DataWindowPrivate;
 class SYSTEMUS_WIDGETS_EXPORT DataWindow : public UserInterface
@@ -17,25 +18,27 @@ class SYSTEMUS_WIDGETS_EXPORT DataWindow : public UserInterface
 
 public:
     enum WindowType {
-        DefaultWindow,
-        TabWindow
+        DefaultWindow
     };
 
     explicit DataWindow(QWidget *parent = nullptr);
-    DataWindow(int type, QWidget *parent = nullptr);
     virtual ~DataWindow();
 
     Data data() const;
     void setData(const Data &data);
+    Q_SIGNAL void dataChanged(const Data &data);
 
     DataEdit *edit() const;
+    virtual QWidget *container() const;
 
-    int windowType() const;
+    virtual int windowType() const;
 
 protected:
     DataWindow(DataWindowPrivate *d, QWidget *parent = nullptr);
 
-    virtual void initUi(DataEdit *edit);
+    void initWindow(DataEdit *edit);
+
+    virtual void display(const Data &data);
 
     QScopedPointer<DataWindowPrivate> d_ptr;
 };

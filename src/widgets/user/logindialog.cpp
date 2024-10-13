@@ -41,7 +41,7 @@ LoginDialog::LoginDialog(QWidget *parent) :
     connect(m_cleanTimer, &QTimer::timeout, this, &LoginDialog::hideError);
 
     Authenticator *auth = Authenticator::instance();
-    connect(auth, &Authenticator::loggedIn, this, [this](const User &) { accept(); });
+    connect(auth, &Authenticator::loggedIn, this, [this](const User &user) { accept(); });
     connect(auth, &Authenticator::logInError, this, &LoginDialog::showError);
 
     connect(this, &QDialog::rejected, qApp, &QCoreApplication::quit);
@@ -108,14 +108,12 @@ void LoginDialog::togglePasswordVisibility()
 
 void LoginDialog::logIn()
 {
-    ui->logInButton->setEnabled(false);
+    ui->errorOutput->setText("...");
+    ui->stackedWidget->setCurrentIndex(1);
 
     Authenticator *auth = Authenticator::instance();
     auth->logIn(ui->loginInput->text(), ui->passwordInput->text());
-
     ui->passwordInput->clear();
-
-    ui->loginInput->setEnabled(true);
 }
 
 void LoginDialog::showError(const AuthenticationError &error)

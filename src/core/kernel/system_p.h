@@ -5,9 +5,11 @@
 
 #include <QtSql/qsqlrecord.h>
 
+#include <QtCore/qabstractnativeeventfilter.h>
+
 namespace Systemus {
 
-class SystemPrivate : public SystemData
+class SystemPrivate : public SystemData, public QAbstractNativeEventFilter
 {
 public:
     enum SystemProperty {
@@ -31,7 +33,9 @@ public:
     void stopTimers();
     void processTimerEvent(QTimerEvent *event);
 
-    System *q;
+    bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override;
+
+    System *q_ptr;
 
     int heartbeatInterval;
 

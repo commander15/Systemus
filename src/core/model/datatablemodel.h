@@ -3,14 +3,13 @@
 
 #include <SystemusCore/global.h>
 #include <SystemusCore/data.h>
-
-#include <QtSql/qsqlquerymodel.h>
+#include <SystemusCore/sqlquerymodel.h>
 
 namespace Systemus {
 namespace Orm {
 
 class DataTableModelPrivate;
-class SYSTEMUS_CORE_EXPORT DataTableModel : public QSqlQueryModel
+class SYSTEMUS_CORE_EXPORT DataTableModel : public SqlQueryModel
 {
     Q_OBJECT
 

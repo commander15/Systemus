@@ -124,55 +124,6 @@ bool AbstractData::save()
     return (hasPrimaryValue() ? update() : insert());
 }
 
-void AbstractData::fill(const AbstractData &other)
-{
-    const MetaTable table = metaTable();
-    const QStringList properties = table.propertyNames();
-    for (const QString &property : properties)
-        if (other.hasProperty(property))
-            writeProperty(property, other.readProperty(property));
-}
-
-void AbstractData::fill(const QJsonObject &object)
-{
-    const QStringList properties = object.keys();
-    for (const QString &property : properties)
-        if (object.contains(property))
-            writeProperty(property, object.value(property));
-}
-
-void AbstractData::fill(const QVariantMap &data)
-{
-    const MetaTable table = metaTable();
-    for (int i(0); i < table.count(); ++i) {
-        const QString propertyName = table.propertyName(i);
-        if (data.contains(propertyName))
-            writeProperty(propertyName, data.value(propertyName));
-    }
-}
-
-void AbstractData::fill(const QVariantHash &data)
-{
-    const MetaTable table = metaTable();
-    for (int i(0); i < table.count(); ++i) {
-        const QString propertyName = table.propertyName(i);
-        if (data.contains(propertyName))
-            writeProperty(propertyName, data.value(propertyName));
-    }
-}
-
-void AbstractData::fill(const QSqlRecord &record)
-{
-    const MetaTable table = metaTable();
-    for (int i(0); i < table.count(); ++i) {
-        const QString propertyName = table.propertyName(i);
-        const QString fieldName = MetaMapper::fieldName(propertyName, table);
-
-        if (record.contains(fieldName))
-            writeProperty(propertyName, record.value(fieldName));
-    }
-}
-
 int AbstractData::lastErrorCode() const
 {
     return lastError().nativeErrorCode().section(';', 0, 0).toInt();
@@ -242,6 +193,55 @@ QSqlRecord AbstractData::toSqlRecord() const
     for (int i(0); i < table.count(); ++i)
         record.setValue(i, readProperty(table.propertyName(i)));
     return record;
+}
+
+void AbstractData::fillWithData(const AbstractData &other)
+{
+    const MetaTable table = metaTable();
+    const QStringList properties = table.propertyNames();
+    for (const QString &property : properties)
+        if (other.hasProperty(property))
+            writeProperty(property, other.readProperty(property));
+}
+
+void AbstractData::fillWithJsonObject(const QJsonObject &object)
+{
+    const QStringList properties = object.keys();
+    for (const QString &property : properties)
+        if (object.contains(property))
+            writeProperty(property, object.value(property));
+}
+
+void AbstractData::fillWithMap(const QVariantMap &data)
+{
+    const MetaTable table = metaTable();
+    for (int i(0); i < table.count(); ++i) {
+        const QString propertyName = table.propertyName(i);
+        if (data.contains(propertyName))
+            writeProperty(propertyName, data.value(propertyName));
+    }
+}
+
+void AbstractData::fillWithHash(const QVariantHash &data)
+{
+    const MetaTable table = metaTable();
+    for (int i(0); i < table.count(); ++i) {
+        const QString propertyName = table.propertyName(i);
+        if (data.contains(propertyName))
+            writeProperty(propertyName, data.value(propertyName));
+    }
+}
+
+void AbstractData::fillWithSqlRecord(const QSqlRecord &record)
+{
+    const MetaTable table = metaTable();
+    for (int i(0); i < table.count(); ++i) {
+        const QString propertyName = table.propertyName(i);
+        const QString fieldName = MetaMapper::fieldName(propertyName, table);
+
+        if (record.contains(fieldName))
+            writeProperty(propertyName, record.value(fieldName));
+    }
 }
 
 QSqlQuery AbstractData::exec(const QString &query, bool *ok, QSqlError *error)

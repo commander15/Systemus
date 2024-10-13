@@ -10,6 +10,7 @@ namespace Systemus {
 class UserPrivate : public InternalDataPrivate
 {
 public:
+    static bool isEncryptedPassword(const QString &password);
     static bool checkPassword(const QString &input, const QString &password);
     static QString encryptPassword(const QString &password);
 
@@ -31,13 +32,6 @@ class UserProfilePrivate : public InternalDataPrivate
 public:
     QString name;
     QString firstName;
-};
-
-class DescriptiveUserDataPrivate : public InternalDataPrivate
-{
-public:
-    QString name;
-    QString description;
 };
 
 }

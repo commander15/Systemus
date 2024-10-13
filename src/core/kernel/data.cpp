@@ -59,27 +59,6 @@ bool Data::isEmpty() const
     return (d->ormData ? d->ormData->isEmpty() : false);
 }
 
-void Data::fill(const AbstractData &other)
-{
-    S_D(Data);
-    if (d->ormData)
-        d->ormData->fill(other);
-}
-
-void Data::fill(const QJsonObject &object)
-{
-    S_D(Data);
-    if (d->ormData)
-        d->ormData->fill(object);
-}
-
-void Data::fill(const QSqlRecord &record)
-{
-    S_D(Data);
-    if (d->ormData)
-        d->ormData->fill(record);
-}
-
 bool Data::refersTo(const AbstractData &other) const
 {
     S_D(const Data);
@@ -249,6 +228,27 @@ bool Data::writeProperty(const QString &name, const QVariant &value)
         d->properties.insert(name, value);
         return false;
     }
+}
+
+void Data::fillWithData(const AbstractData &other)
+{
+    S_D(Data);
+    if (d->ormData)
+        d->ormData->fill(other);
+}
+
+void Data::fillWithJsonObject(const QJsonObject &object)
+{
+    S_D(Data);
+    if (d->ormData)
+        d->ormData->fill(object);
+}
+
+void Data::fillWithSqlRecord(const QSqlRecord &record)
+{
+    S_D(Data);
+    if (d->ormData)
+        d->ormData->fill(record);
 }
 
 void Data::processError(const QSqlError &error)

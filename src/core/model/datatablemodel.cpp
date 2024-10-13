@@ -1,6 +1,7 @@
 #include "datatablemodel.h"
 #include "datatablemodel_p.h"
 
+#include <SystemusCore/private/debug_p.h>
 #include <SystemusCore/namespace.h>
 #include <SystemusCore/ormbackend.h>
 #include <SystemusCore/metamapper.h>
@@ -11,7 +12,7 @@ namespace Systemus {
 namespace Orm {
 
 DataTableModel::DataTableModel(QObject *parent) :
-    QSqlQueryModel(parent),
+    SqlQueryModel(parent),
     d_ptr(new DataTableModelPrivate(this))
 {
 }
@@ -155,13 +156,18 @@ void DataTableModel::setItemsPerPage(int items)
 
 bool DataTableModel::select()
 {
+    if (!d_ptr->table.isValid()) {
+        systemusWarning() << "DataTableModel::select(): can't process, invalid Meta table";
+        return false;
+    }
+
     bool ok;
 
     QSqlQuery query = Systemus::exec(selectStatement(CountStatement), &ok);
     if (ok && query.next())
         d_ptr->setItemCount(query.value(0).toInt());
 
-    QSqlQueryModel::setQuery(Systemus::execCached(selectStatement(DataStatement), &ok));
+    SqlQueryModel::setQuery(Systemus::execCached(selectStatement(DataStatement), &ok));
 
     return ok;
 }

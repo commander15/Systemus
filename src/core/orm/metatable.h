@@ -115,6 +115,8 @@ public:
 
     static void registerClassAssignmentFunction(const QString &className, const std::function<void(const void *, void *)> &function);
 
+    static void clearTables();
+
 private:
     MetaTable(MetaTableData *d);
 
@@ -139,14 +141,21 @@ inline MetaTable MetaTable::fromType()
 template<typename T>
 inline void MetaTable::registerClass()
 {
-    const QMetaObject *object(&T::staticMetaObject);
-    const QMetaType type(qRegisterMetaType<T>());
+    const QMetaObject *metaObject(&T::staticMetaObject);
+    const QString className = metaObject->className();
 
-    const QString className = object->className();
-    registerClass(className, object, type);
-    registerClassAssignmentFunction(className, [](const void *from, void *to) {
-        *static_cast<T *>(to) = *static_cast<const T *>(to);
-    });
+    if (!metaObject->inherits(&QObject::staticMetaObject)) {
+        // For regular Q_GADGETs
+        const QMetaType type(qRegisterMetaType<T>());
+        registerClass(className, metaObject, type);
+
+        registerClassAssignmentFunction(className, [](const void *from, void *to) {
+            *static_cast<T *>(to) = *static_cast<const T *>(from);
+        });
+    } else {
+        // For Q_OBJECTs we discard meta types functions
+        registerClass(className, metaObject, QMetaType());
+    }
 }
 
 }

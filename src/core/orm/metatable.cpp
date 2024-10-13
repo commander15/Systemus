@@ -58,7 +58,7 @@ QString MetaTable::primaryPropertyName() const
     if (d->metaObject)
         return d->metaObject->property(d->primaryPropertyIndex).name();
     else
-        return Backend::instance()->propertyNameFromFieldName(d->record.fieldName(d->primaryFieldIndex), className());
+        return QString();
 }
 
 QMetaProperty MetaTable::primaryProperty() const
@@ -279,7 +279,7 @@ QString MetaTable::propertyName(int index) const
     if (index < d->metaPropertyIndexes.size())
         return (d->metaObject ? d->metaObject->property(d->metaPropertyIndexes.at(index)).name() : QString());
     else
-        return Backend::instance()->propertyNameFromFieldName(d->record.fieldName(index), className());
+        return QString();
 }
 
 SecretProperty MetaTable::property(int index) const
@@ -398,7 +398,14 @@ QMetaType MetaTable::metaType() const
 bool MetaTable::isValid() const
 {
     S_D(const MetaTable);
-    return d->metaObject && d->metaTypeId > 0;
+
+    if (!d->metaObject)
+        return false;
+
+    if (d->metaObject->inherits(&QObject::staticMetaObject))
+        return true;
+    else
+        return d->metaTypeId != -1;
 }
 
 bool MetaTable::isRegistered(const QString &name)
@@ -418,7 +425,8 @@ MetaTable MetaTable::fromClassName(const QString &name)
 
 void MetaTable::registerClass(const QString &name, const QMetaObject *metaObject, const QMetaType &metaType)
 {
-    if (s_tables.contains(name) || !metaObject || !metaType.isValid())
+    const bool isQObject = metaObject->inherits(&QObject::staticMetaObject);
+    if (s_tables.contains(name) || (!isQObject && !metaType.isValid()))
         return;
 
     const Backend *backend = Backend::instance();
@@ -451,7 +459,8 @@ void MetaTable::registerClass(const QString &name, const QMetaObject *metaObject
     data->userFieldIndex = data->metaPropertyFieldIndexes.value(metaObject->userProperty().propertyIndex());
 
     data->metaObject = metaObject;
-    data->metaTypeId = metaType.id();
+    if (!isQObject)
+        data->metaTypeId = metaType.id(-1);
 
     data->foreignPropertyName = backend->foreignPropertyNameFromMetaObject(metaObject);
     data->foreignFieldName = backend->foreignFieldNameFromPropertyName(metaObject->property(data->primaryPropertyIndex).name(), metaObject->className());
@@ -463,6 +472,11 @@ void MetaTable::registerClassAssignmentFunction(const QString &className, const 
 {
     if (s_tables.contains(className))
         static_cast<MetaTablePrivate *>(s_tables[className].d_ptr.get())->assignmentFunction = function;
+}
+
+void MetaTable::clearTables()
+{
+    s_tables.clear();
 }
 
 QHash<QString, MetaTable> MetaTable::s_tables;

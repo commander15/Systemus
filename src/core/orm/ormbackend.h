@@ -28,18 +28,17 @@ public:
 
     virtual QString name() const = 0;
 
-    // OO Side
+    // OO Side (Remove classNameFromTableName method)
 
-    virtual QString classNameFromTableName(const QString &tableName) const = 0;
     QList<SecretProperty> secretPropertiesFromMetaObject(const QMetaObject *metaObject) const;
     QList<SecretProperty> secretPropertiesFromString(const QString &str, const QMetaObject *metaObject) const;
     QList<SecretProperty> searchPropertiesFromMetaObject(const QMetaObject *metaObject, QList<int> *metaIndexes = nullptr) const;
+
     QString foreignPropertyNameFromMetaObject(const QMetaObject *metaObject) const;
-    virtual QString foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const = 0;
-    virtual QString propertyNameFromFieldName(const QString &fieldName, const QString &table) const = 0;
+    QString foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const;
 
     QString associationClassNameFromMetaObjects(const QMetaObject *o1, const QMetaObject *o2) const;
-    virtual QString associationClassNameFromClassNames(const QString &c1, const QString &c2) const;
+    QString associationClassNameFromClassNames(const QString &c1, const QString &c2) const;
 
     // DB Side
 
@@ -62,7 +61,7 @@ public:
     static bool parseFieldInput(const QString &input, QString *fieldName, QString *tableName);
 
     static Backend *instance();
-    static Backend *defaultBackend();
+    static void setInstance(Backend *backend);
 
 protected:
     QMetaProperty primaryProperty(const QMetaObject *metaObject) const;
@@ -73,6 +72,8 @@ protected:
 private:
     bool isDataProperty(const QMetaProperty &property) const;
 
+    static QScopedPointer<Backend> s_instance;
+
     friend class MetaTable;
 };
 
@@ -81,15 +82,19 @@ class SYSTEMUS_CORE_EXPORT SystemusBackend : public Backend
 public:
     QString name() const override;
 
-    QString classNameFromTableName(const QString &tableName) const override;
-    QString foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const override;
-    QString propertyNameFromFieldName(const QString &fieldName, const QString &tableName) const override;
-
     QString tableNameFromClassName(const QString &className) const override;
     QString foreignFieldNameFromPropertyName(const QString &propertyName, const QString &className) const override;
     QString fieldNameFromPropertyName(const QString &propertyName, const QString &className) const override;
 
     QString associationTableNameFromClassNames(const QString &c1, const QString &c2) const override;
+};
+
+class SYSTEMUS_CORE_EXPORT LaravelBackend : public SystemusBackend
+{
+public:
+    QString name() const override;
+
+    QString tableNameFromClassName(const QString &className) const override;
 };
 
 }

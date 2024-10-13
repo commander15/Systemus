@@ -1,6 +1,8 @@
 #include "system.h"
 #include "system_p.h"
 
+#include <SystemusCore/orm.h>
+#include <SystemusCore/metatable.h>
 #include <SystemusCore/namespace.h>
 #include <SystemusCore/settings.h>
 #include <SystemusCore/private/namespace_p.h>
@@ -17,6 +19,8 @@
 #include <QtCore/qdir.h>
 #include <QtCore/qfile.h>
 #include <QtCore/qtimer.h>
+
+#include <xcb/xcb.h>
 
 namespace Systemus {
 
@@ -39,6 +43,11 @@ System::~System()
 {
 }
 
+int System::id() const
+{
+    return 1;
+}
+
 QByteArray System::logoData() const
 {
     S_D(const System);
@@ -58,8 +67,10 @@ QByteArray System::logoData() const
 void System::setLogoData(const QByteArray &data)
 {
     S_D(System);
-    d->logoData = data;
-    d->markPropertyChange(SystemPrivate::LogoProperty);
+    if (d->logoData != data) {
+        d->logoData = data;
+        d->markPropertyChange(SystemPrivate::LogoProperty);
+    }
 }
 
 QString System::name() const
@@ -83,8 +94,10 @@ QVersionNumber System::version() const
 
 void System::setVersion(const QVersionNumber &version)
 {
-    if (d_ptr->version != version) {
-        d_ptr->version = version;
+    S_D(System);
+    if (d->version != version) {
+        d->version = version;
+        d->markPropertyChange(SystemPrivate::VersionProperty);
     }
 }
 
@@ -137,7 +150,12 @@ void System::sync()
     if (!d->timersActive())
         d->startTimers();
 
-    if (d->hasPendingPropertyChanges()) {
+    if (d->name.isEmpty()) {
+        if (d->getProperties()) {
+            d->startTimers();
+            emit ready();
+        }
+    } else if (d->hasPendingPropertyChanges()) {
         QList<SystemPrivate::SystemProperty> properties;
         if (d->commitPropertyChanges(&properties)) {
             for (SystemPrivate::SystemProperty property : std::as_const(properties)) {
@@ -156,11 +174,6 @@ void System::sync()
                 }
             }
         }
-    } else if (d->name.isEmpty()) {
-        if (d->getProperties() && d->getTime()) {
-            d->startTimers();
-            emit ready();
-        }
     }
 
     Settings::instance()->sync();
@@ -170,9 +183,8 @@ void System::sync()
 
 System *System::instance()
 {
-    if (!s_instance)
-        s_instance.reset(new System());
-    return s_instance.get();
+    static System system;
+    return &system;
 }
 
 void System::timerEvent(QTimerEvent *event)
@@ -193,10 +205,8 @@ void System::setVersionString(const QString &version)
     d->markPropertyChange(SystemPrivate::VersionProperty);
 }
 
-QScopedPointer<System> System::s_instance;
-
 SystemPrivate::SystemPrivate(System *q) :
-    q(q),
+    q_ptr(q),
     heartbeatInterval(60000),
     dir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/Systemus"),
     m_heartbeatTimerId(-1),
@@ -205,11 +215,14 @@ SystemPrivate::SystemPrivate(System *q) :
     QDir systemusDir(dir);
     if (!systemusDir.exists("system"))
         systemusDir.mkpath("system");
+
+    qApp->installNativeEventFilter(this);
 }
 
 bool SystemPrivate::getProperties()
 {
-    QString statement = Systemus::sqlStatement(QSqlDriver::SelectStatement, systemTable(), systemRecord(), false);
+    QString statement = "SELECT {{logoData}}, {{name}}, {{version}}, CURRENT_TIMESTAMP FROM {{Systemus::System}} LIMIT 1";
+    statement = Orm::formatExpression(statement, q_ptr->metaObject()->className());
 
     bool ok = false;
     QSqlQuery query = Systemus::exec(statement, &ok);
@@ -226,6 +239,8 @@ bool SystemPrivate::getProperties()
             settings->setValue("version", version.toString());
             settings->endGroup();
         }
+
+        now = query.value(3).toDateTime();
 
         return true;
     } else {
@@ -310,28 +325,36 @@ bool SystemPrivate::timersActive() const
 
 void SystemPrivate::startTimers()
 {
-    m_heartbeatTimerId = q->startTimer(heartbeatInterval);
-    m_nowTimerId = q->startTimer(1000);
+    m_heartbeatTimerId = q_ptr->startTimer(heartbeatInterval);
+    m_nowTimerId = q_ptr->startTimer(1000);
 }
 
 void SystemPrivate::stopTimers()
 {
-    q->killTimer(m_heartbeatTimerId);
+    q_ptr->killTimer(m_heartbeatTimerId);
     m_heartbeatTimerId = -1;
 
-    q->killTimer(m_nowTimerId);
+    q_ptr->killTimer(m_nowTimerId);
     m_nowTimerId = -1;
 }
 
 void SystemPrivate::processTimerEvent(QTimerEvent *event)
 {
     if (event->timerId() == m_heartbeatTimerId) {
-        q->sync();
+        q_ptr->sync();
         event->accept();
     } else if (event->timerId() == m_nowTimerId) {
         now = now.addSecs(1);
         event->accept();
     }
+}
+
+bool SystemPrivate::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result)
+{
+    Q_UNUSED(eventType);
+    Q_UNUSED(message);
+    Q_UNUSED(result);
+    return false;
 }
 
 QString SystemPrivate::systemTable()

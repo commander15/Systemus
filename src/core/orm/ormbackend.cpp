@@ -1,5 +1,4 @@
 #include "ormbackend.h"
-#include "ormbackend_p.h"
 
 #include <SystemusCore/private/debug_p.h>
 #include <SystemusCore/namespace.h>
@@ -117,6 +116,14 @@ QString Backend::foreignPropertyNameFromMetaObject(const QMetaObject *metaObject
         return foreignPropertyNameFromPropertyName(primaryProperty(metaObject).name(), metaObject->className());
 }
 
+QString Backend::foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const
+{
+    QString name = className.section("::", -1).toLower();
+    name.append(propertyName.at(0).toUpper());
+    name.append(propertyName.sliced(1, propertyName.size() - 1));
+    return name;
+}
+
 QString Backend::associationClassNameFromMetaObjects(const QMetaObject *o1, const QMetaObject *o2) const
 {
     return associationClassNameFromClassNames(o1->className(), o2->className());
@@ -124,7 +131,15 @@ QString Backend::associationClassNameFromMetaObjects(const QMetaObject *o1, cons
 
 QString Backend::associationClassNameFromClassNames(const QString &c1, const QString &c2) const
 {
-    return c1 + c2;
+    QString cls1 = c1.section("::", -1);
+    QString cls2 = c2.section("::", -1);
+
+    if (cls1.contains(cls2))
+        return cls1;
+    else if (cls2.contains(cls1))
+        return cls2;
+    else
+        return cls1 + cls2;
 }
 
 QString Backend::tableNameFromMetaObject(const QMetaObject *metaObject) const
@@ -264,22 +279,36 @@ bool Backend::parseFieldInput(const QString &input, QString *fieldName, QString 
 
 Backend *Backend::instance()
 {
-    return defaultBackend();
+    if (!s_instance)
+        s_instance.reset(new SystemusBackend());
+    return s_instance.get();
 }
 
-Backend *Backend::defaultBackend()
+void Backend::setInstance(Backend *backend)
 {
-    static DefaultBackend instance;
-    return &instance;
+    if (backend && backend != s_instance.get())
+        s_instance.reset(backend);
 }
 
 QMetaProperty Backend::primaryProperty(const QMetaObject *metaObject) const
 {
+    int index = metaObject->indexOfClassInfo("primary");
+    if (index >= 0) {
+        const char *propertyName = metaObject->classInfo(index).value();
+        index = metaObject->indexOfProperty(propertyName);
+        if (index >= 0)
+            return metaObject->property(index);
+        else
+            systemusWarning() << name() << " backend: primary property provided for "
+                              << metaObject->className() << " class doesn't exists";
+    }
+
     for (int i(0); i < metaObject->propertyCount(); ++i) {
         const QMetaProperty property = metaObject->property(i);
         if (isDataProperty(property))
             return property;
     }
+
     return QMetaProperty();
 }
 
@@ -323,48 +352,20 @@ QList<QMetaProperty> Backend::dataProperties(const QMetaObject *metaObject) cons
 
 bool Backend::isDataProperty(const QMetaProperty &property) const
 {
-    return property.isStored();
+    if (!property.isValid() || !property.isStored())
+        return false;
+
+    if (property.enclosingMetaObject()->inherits(&QObject::staticMetaObject))
+        return strcmp(property.name(), "objectName") != 0;
+
+    return true;
 }
+
+QScopedPointer<Backend> Backend::s_instance;
 
 QString SystemusBackend::name() const
 {
     return QStringLiteral("Systemus");
-}
-
-QString SystemusBackend::classNameFromTableName(const QString &tableName) const
-{
-    return tableName;
-}
-
-QString SystemusBackend::foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const
-{
-    QString prop = propertyName;
-    prop[0] = prop.at(0).toUpper();
-    return className.section("::", -1).toLower() + prop;
-}
-
-QString SystemusBackend::propertyNameFromFieldName(const QString &fieldName, const QString &tableName) const
-{
-    // Systemus don't use table names
-    Q_UNUSED(tableName);
-
-
-    // We just convert the field name from snake case to camel case according to the Systemus naming conventions
-
-    QString name;
-    bool upperNext = false;
-    for (const QChar &c : fieldName) {
-        if (c != '_') {
-            if (!upperNext)
-                name.append(c);
-            else {
-                name.append(c.toUpper());
-                upperNext = false;
-            }
-        } else
-            upperNext = true;
-    }
-    return name;
 }
 
 QString SystemusBackend::tableNameFromClassName(const QString &className) const
@@ -402,70 +403,15 @@ QString SystemusBackend::associationTableNameFromClassNames(const QString &c1, c
     return c1.section("::", -1) + c2.section("::", -1) + 's';
 }
 
-DefaultBackend::DefaultBackend() :
-    m_backend(new SystemusBackend())
+QString LaravelBackend::name() const
 {
+    return QStringLiteral("Laravel");
 }
 
-DefaultBackend::~DefaultBackend()
+QString LaravelBackend::tableNameFromClassName(const QString &className) const
 {
-    if (m_backend)
-        delete m_backend;
-}
-
-QString DefaultBackend::name() const
-{
-    return m_backend->name();
-}
-
-QString DefaultBackend::classNameFromTableName(const QString &tableName) const
-{
-    return m_backend->classNameFromTableName(tableName);
-}
-
-QString DefaultBackend::foreignPropertyNameFromPropertyName(const QString &propertyName, const QString &className) const
-{
-    return m_backend->foreignPropertyNameFromPropertyName(propertyName, className);
-}
-
-QString DefaultBackend::propertyNameFromFieldName(const QString &fieldName, const QString &tableName) const
-{
-    return m_backend->propertyNameFromFieldName(fieldName, tableName);
-}
-
-QString DefaultBackend::tableNameFromClassName(const QString &className) const
-{
-    QString prop;
-    QString cls;
-
-    if (parsePropertyInput(className, &prop, &cls))
-        return tableNameFromClassName(cls);
-    else
-        return m_backend->tableNameFromClassName(className);
-}
-
-QString DefaultBackend::foreignFieldNameFromPropertyName(const QString &propertyName, const QString &className) const
-{
-    return className.section("::", -1).toLower() + '_' + fieldNameFromPropertyName(propertyName, className);
-}
-
-QString DefaultBackend::fieldNameFromPropertyName(const QString &propertyName, const QString &className) const
-{
-    QString prop;
-    QString cls;
-
-    if (parsePropertyInput(propertyName, &prop, &cls))
-        return fieldNameFromPropertyName(prop, cls);
-    else if (propertyName != '*') {
-        return m_backend->fieldNameFromPropertyName(propertyName, className);
-    } else {
-        return propertyName;
-    }
-}
-
-QString DefaultBackend::associationTableNameFromClassNames(const QString &c1, const QString &c2) const
-{
-    return tableNameFromClassName(c1.section("::", -1) + c2.section("::", -1));
+    const QString propertyName = SystemusBackend::tableNameFromClassName(className);
+    return fieldNameFromPropertyName(propertyName.toLower(), className);
 }
 
 }

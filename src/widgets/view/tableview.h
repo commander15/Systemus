@@ -9,7 +9,9 @@
 
 namespace Systemus {
 
-class AbstractDataModel;
+namespace Orm {
+class DataTableModel;
+}
 
 class SYSTEMUS_WIDGETS_EXPORT TableView : public QTableView
 {
@@ -19,23 +21,20 @@ public:
     explicit TableView(QWidget *parent = nullptr);
     ~TableView();
 
-    template<typename T>
-    T currentData() const;
+    template<typename T> T currentData() const;
     Data currentData() const;
 
-    template<typename T>
-    QList<T> selectedData() const;
+    template<typename T> QList<T> selectedData() const;
     QList<Data> selectedData() const;
 
     QList<int> selectedRows() const;
 
-    template<typename T>
-    T dataAt(const QPoint &pos) const;
+    template<typename T> T dataAt(const QPoint &pos) const;
     Data dataAt(const QPoint &pos) const;
 
     Q_SIGNAL void dataDoubleClicked(const Data &data);
 
-    AbstractDataModel *model() const;
+    Orm::DataTableModel *model() const;
     void setModel(QAbstractItemModel *model);
 
 private:

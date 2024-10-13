@@ -31,7 +31,19 @@ QString Orm::MetaMapper::tableName(const MetaTable &table, int options)
 
 QString Orm::MetaMapper::defaultTableName(const QString &className, int options)
 {
-    return Backend::instance()->tableNameFromClassName(className);
+    const QString tableName = Backend::instance()->tableNameFromClassName(className);
+
+    const MapOptions mapOptions(options);
+    if (mapOptions.testFlag(EscapeIdentifiers))
+        return escapeTableName(tableName);
+    else
+        return tableName;
+
+}
+
+QString Orm::MetaMapper::fieldName(const QString &propertyName, int options)
+{
+    return fieldName(propertyName, MetaTable(), options);
 }
 
 QString Orm::MetaMapper::fieldName(const QString &propertyName, const QMetaObject *metaObject, int options)
@@ -62,7 +74,7 @@ QString Orm::MetaMapper::fieldName(const QString &propertyName, const MetaTable 
         default:
             return fieldName(parts.at(parts.size() - 1), parts.at(parts.size() - 2), options);
         }
-    } else {
+    } else if (table.isValid()) {
         const MapOptions mapOptions(options);
 
         QString name;
@@ -78,7 +90,10 @@ QString Orm::MetaMapper::fieldName(const QString &propertyName, const MetaTable 
                 field = escapeFieldName(field);
             name.append(field);
         }
+
         return name;
+    } else {
+        return QString();
     }
 }
 

@@ -1,6 +1,7 @@
 #include "orm.h"
 #include "orm_p.h"
 
+#include <SystemusCore/system.h>
 #include <SystemusCore/user.h>
 #include <SystemusCore/ormbackend.h>
 #include <SystemusCore/metamapper.h>
@@ -19,30 +20,70 @@ namespace Systemus {
 
 namespace Orm {
 
-void init()
+void init(int convention)
 {
+    switch (convention) {
+    case LaravelConvention:
+        setBackend(new LaravelBackend());
+        break;
+
+    default:
+        setBackend(new SystemusBackend());
+        break;
+    }
+}
+
+void init(Backend *backend)
+{
+    setBackend(backend);
+}
+
+void registerClasses()
+{
+    {
+        const QMetaObject *metaObject = &Systemus::System::staticMetaObject;
+        MetaTable::registerClass(metaObject->className(), metaObject, QMetaType());
+    }
+
     MetaTable::registerClass<User>();
     MetaTable::registerClass<UserProfile>();
     MetaTable::registerClass<UserRole>();
-    //MetaTable::registerClass<UserGroup>();
+    MetaTable::registerClass<UserGroup>();
     //MetaTable::registerClass<Privilege>();
     //MetaTable::registerClass<Permission>();
 }
 
+Backend *backend()
+{
+    return Backend::instance();
+}
+
+void setBackend(Backend *backend)
+{
+    MetaTable::clearTables();
+    Backend::setInstance(backend);
+    registerClasses();
+}
+
+QString formatExpression(const QString &expression)
+{
+    return formatExpression(expression, QString());
+}
+
 QString formatExpression(const QString &expression, const QString &contextClassName)
 {
-    const MetaTable contextTable = MetaTable::fromClassName(contextClassName);
+    MetaTable contextTable = (!contextClassName.isEmpty() ? MetaTable::fromClassName(contextClassName) : MetaTable());
 
-    static const QRegularExpression regExp("({{\\s*[A-Za-z_][A-Za-z0-9_\\.]*\\s*}})");
+    static const QRegularExpression regExp("({{\\s*[A-Za-z_][A-Za-z0-9_\\:\\.]*\\s*}})");
     const int matchIndex = 1;
 
     QRegularExpressionMatchIterator it = regExp.globalMatch(expression, 0, QRegularExpression::NormalMatch);
 
     struct Replacement {
+        QString match;
         int pos;
         int size;
-        QString match;
-        QString replacement;
+        QString value;
     };
     QList<Replacement> replacements;
 
@@ -52,26 +93,26 @@ QString formatExpression(const QString &expression, const QString &contextClassN
         if (!match.hasMatch() || !match.hasCaptured(matchIndex))
             continue;
 
-        Replacement r;
-        r.pos = match.capturedStart(matchIndex);
-        r.size = match.capturedLength(matchIndex);
+        Replacement replacement;
+        replacement.match = match.captured(matchIndex);
+        replacement.match = replacement.match.sliced(2, replacement.match.size() - 4);
+        replacement.match = replacement.match.trimmed();
+        replacement.pos = match.capturedStart(matchIndex);
+        replacement.size = match.capturedLength(matchIndex);
 
-        r.match = match.captured(matchIndex);
-        r.replacement = r.match;
-        r.replacement.remove(' ');
-        r.replacement.remove("{{");
-        r.replacement.remove("}}");
+        if (replacement.match.contains('.')) {
+            const QStringList items = replacement.match.split('.', Qt::SkipEmptyParts);
+            replacement.value = MetaMapper::fieldName(items.last(), items.first(), MetaMapper::IncludeTableName);
+        } else if (replacement.match.at(0).isUpper()) {
+            replacement.value = MetaMapper::tableName(replacement.match);
 
-        if (r.replacement.contains('.')) {
-            const QStringList items = r.replacement.split('.', Qt::SkipEmptyParts);
-            r.replacement = MetaMapper::fieldName(items.last(), items.first(), MetaMapper::IncludeTableName);
-        } else if (r.replacement.at(0).isUpper()) {
-            r.replacement = MetaMapper::tableName(r.replacement);
-        } else {
-            r.replacement = MetaMapper::fieldName(r.replacement, contextTable);
+            if (!contextTable.isValid())
+                contextTable = MetaTable::fromClassName(replacement.match);
+        } else if (contextTable.isValid()) {
+            replacement.value = MetaMapper::fieldName(replacement.match, contextTable);
         }
 
-        replacements.append(r);
+        replacements.append(replacement);
     }
 
     QString result;
@@ -80,8 +121,13 @@ QString formatExpression(const QString &expression, const QString &contextClassN
     for (const Replacement &rep : replacements) {
         // Append the part of the string before the current match
         result.append(expression.mid(lastPos, rep.pos - lastPos));
+
         // Append the replacement string
-        result.append(rep.replacement);
+        if (!rep.value.isEmpty())
+            result.append(rep.value);
+        else
+            result.append(MetaMapper::fieldName(rep.match, contextTable));
+
         // Update the last position after the match
         lastPos = rep.pos + rep.size;
     }

@@ -3,8 +3,7 @@
 
 #include <SystemusCore/system.h>
 
-#include <QtCore/qcryptographichash.h>
-#include <QtCore/qrandom.h>
+#include <QtCore/qregularexpression.h>
 
 #include <bcrypt.h>
 
@@ -33,14 +32,23 @@ QString User::password() const
     return d->password;
 }
 
-void User::setPassword(const QString &password, bool encrypt)
+void User::setPassword(const QString &password, PasswordType type)
 {
     S_D(User);
 
-    if (encrypt)
+    switch (type) {
+    case Clear:
         d->password = d->encryptPassword(password);
-    else
+        break;
+
+    case Hashed:
         d->password = password;
+        break;
+
+    default:
+        setPassword(password, d->isEncryptedPassword(password) ? Hashed : Clear);
+        break;
+    }
 }
 
 int User::status() const
@@ -92,6 +100,12 @@ bool User::postGet()
     return d->role.getByPrimary(readProperty("roleId"));
 }
 
+bool User::postUpdate()
+{
+    S_D(User);
+    return d->profile.update();
+}
+
 User User::fromLogin(const QString &login)
 {
     return fromFilter("{{ login }} = " + formatValue(login));
@@ -132,33 +146,10 @@ QString UserProfile::fullName() const
     return d->name + (!d->firstName.isEmpty() ? ' ' + d->firstName : QString());
 }
 
-DescriptiveUserData::DescriptiveUserData() :
-    InternalData(new DescriptiveUserDataPrivate)
+bool UserPrivate::isEncryptedPassword(const QString &password)
 {
-}
-
-QString DescriptiveUserData::name() const
-{
-    S_D(const DescriptiveUserData);
-    return d->name;
-}
-
-void DescriptiveUserData::setName(const QString &name)
-{
-    S_D(DescriptiveUserData);
-    d->name = name;
-}
-
-QString DescriptiveUserData::description() const
-{
-    S_D(const DescriptiveUserData);
-    return d->description;
-}
-
-void DescriptiveUserData::setDescription(const QString &desc)
-{
-    S_D(DescriptiveUserData);
-    d->description = desc;
+    static QRegularExpression bcryptRegex(R"(^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$)");
+    return bcryptRegex.match(password).hasMatch();
 }
 
 bool UserPrivate::checkPassword(const QString &input, const QString &password)

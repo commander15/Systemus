@@ -549,13 +549,13 @@ QString DataInterface::searchFilter(const QString &query) const
     const int options = Orm::MetaMapper::IncludeTableName|Orm::MetaMapper::EscapeIdentifiers;
 
     std::transform(properties.begin(), properties.end(), expressions.begin(), [table, options, query](const Orm::SecretProperty &property) {
-        const QString &prop = Orm::MetaMapper::fieldName(property.name(), table, options);
+        const QString &field = Orm::MetaMapper::fieldName(property.name(), table, options);
         if (property.metaType().id() == QMetaType::QString) {
-            return prop + " LIKE " + formatValue(query + '%');
+            return field + " LIKE " + formatValue(query + '%');
         } else {
             QVariant value = query;
             value.convert(property.metaType());
-            return prop + " = " + formatValue(value);
+            return field + " = " + formatValue(value);
         }
     });
 

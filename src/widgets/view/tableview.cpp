@@ -1,6 +1,6 @@
 #include "tableview.h"
 
-#include <SystemusCore/abstractdatamodel.h>
+#include <SystemusCore/datatablemodel.h>
 
 #include <SystemusCore/private/data_p.h>
 
@@ -27,7 +27,7 @@ TableView::~TableView()
 
 Data TableView::currentData() const
 {
-    AbstractDataModel *model = this->model();
+    Orm::DataTableModel *model = this->model();
     if (!model)
         return Data();
 
@@ -64,16 +64,16 @@ QList<int> TableView::selectedRows() const
 
 Data TableView::dataAt(const QPoint &pos) const
 {
-    AbstractDataModel *model = this->model();
+    Orm::DataTableModel *model = this->model();
     if (!model)
         return Data();
 
     return model->item(indexAt(pos).row());
 }
 
-AbstractDataModel *TableView::model() const
+Orm::DataTableModel *TableView::model() const
 {
-    return static_cast<AbstractDataModel *>(QTableView::model());
+    return static_cast<Orm::DataTableModel *>(QTableView::model());
 }
 
 void TableView::setModel(QAbstractItemModel *model)

@@ -42,14 +42,14 @@ public:
     QVariant property(const QString &name) const;
     void setProperty(const QString &name, const QVariant &value);
 
-    virtual void fill(const AbstractData &other);
-    virtual void fill(const QJsonObject &object);
-    virtual void fill(const QVariantMap &data);
-    virtual void fill(const QVariantHash &data);
-    virtual void fill(const QSqlRecord &record);
-
     virtual bool isValid() const;
     virtual bool isEmpty() const;
+
+    inline void fill(const AbstractData &data) { fillWithData(data); }
+    inline void fill(const QJsonObject &object) { fillWithJsonObject(object); }
+    inline void fill(const QVariantMap &map) { fillWithMap(map); }
+    inline void fill(const QVariantHash &hash) { fillWithHash(hash); }
+    inline void fill(const QSqlRecord &record) { fillWithSqlRecord(record); }
 
     bool identicalTo(const AbstractData &other) const;
     virtual bool refersTo(const AbstractData &other) const;
@@ -85,6 +85,12 @@ protected:
     virtual bool isPropertyNull(const QString &name) const = 0;
     virtual QVariant readProperty(const QString &name) const = 0;
     virtual bool writeProperty(const QString &name, const QVariant &value) = 0;
+
+    virtual void fillWithData(const AbstractData &other);
+    virtual void fillWithJsonObject(const QJsonObject &object);
+    virtual void fillWithMap(const QVariantMap &data);
+    virtual void fillWithHash(const QVariantHash &data);
+    virtual void fillWithSqlRecord(const QSqlRecord &record);
 
     QSqlQuery exec(const QString &query, bool *ok = nullptr, QSqlError *error = nullptr);
     virtual void processError(const QSqlError &error) = 0;

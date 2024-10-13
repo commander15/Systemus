@@ -30,6 +30,8 @@ find_package(Qt REQUIRED)
 
 add_subdirectory(3rdparty)
 
+set(Systemus_EXPORT TRUE)
+
 add_subdirectory(src)
 
 if (Systemus_BUILD_TEST)

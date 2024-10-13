@@ -1,11 +1,11 @@
 target_headers(Core
     PUBLIC
-        datatablemodel.h
+        sqlquerymodel.h datatablemodel.h
     PRIVATE
         datatablemodel_p.h
 )
 
 target_sources(Core
     PRIVATE
-        datatablemodel.cpp
+        sqlquerymodel.cpp datatablemodel.cpp
 )

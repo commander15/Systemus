@@ -4,6 +4,7 @@
 #include <SystemusCore/global.h>
 
 class QMetaObject;
+class QStringView;
 
 class QSqlRecord;
 
@@ -27,6 +28,7 @@ public:
     static QString tableName(const MetaTable &table, int options = NoFieldMapOption);
     static QString defaultTableName(const QString &className, int options = NoFieldMapOption);
 
+    static QString fieldName(const QString &propertyName, int options = NoFieldMapOption);
     static QString fieldName(const QString &propertyName, const QMetaObject *metaObject, int options = NoFieldMapOption);
     static QString fieldName(const QString &propertyName, const QString &className, int options = NoFieldMapOption);
     static QString fieldName(const QString &propertyName, const MetaTable &table, int options = NoFieldMapOption);
