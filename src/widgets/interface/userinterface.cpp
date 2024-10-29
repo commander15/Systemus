@@ -3,6 +3,8 @@
 
 #include <SystemusWidgets/interfaceserver.h>
 
+#include <SystemusCore/controlgate.h>
+
 #include <QtGui/qevent.h>
 
 namespace Systemus {
@@ -72,8 +74,10 @@ bool UserInterface::canHandleAction(int action) const
 
 bool UserInterface::supportAction(int action) const
 {
-    Q_UNUSED(action);
-    return false;
+    QString actionName = interfaceId();
+    if (!actionName.isEmpty())
+        actionName.append('.' + QString::number(action));
+    return ControlGate::hasPermission(actionName);
 }
 
 QVariant UserInterface::trigger(int action, const QVariantList &data)

@@ -82,11 +82,20 @@ QString Orm::MetaMapper::fieldName(const QString &propertyName, const MetaTable 
             name.append(tableName(table, mapOptions) + '.');
 
         {
-            QString field = table.fieldName(table.indexOfProperty(propertyName));
+            bool escapeAllowed;
+            QString field;
+            if (propertyName == '*') {
+                field = propertyName;
+                escapeAllowed = false;
+            } else{
+                field = table.fieldName(table.indexOfProperty(propertyName));
+                escapeAllowed = true;
+            }
+
             if (field.isEmpty())
                 field = Backend::instance()->fieldNameFromPropertyName(propertyName, table.className());
 
-            if (mapOptions.testFlag(EscapeIdentifiers))
+            if (mapOptions.testFlag(EscapeIdentifiers) && escapeAllowed)
                 field = escapeFieldName(field);
             name.append(field);
         }

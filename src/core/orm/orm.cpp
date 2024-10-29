@@ -62,7 +62,9 @@ void setBackend(Backend *backend)
 {
     MetaTable::clearTables();
     Backend::setInstance(backend);
+
     registerClasses();
+    backend->registerClasses();
 }
 
 QString formatExpression(const QString &expression)

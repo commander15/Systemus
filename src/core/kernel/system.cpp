@@ -20,8 +20,6 @@
 #include <QtCore/qfile.h>
 #include <QtCore/qtimer.h>
 
-#include <xcb/xcb.h>
-
 namespace Systemus {
 
 System::System(QObject *parent) :

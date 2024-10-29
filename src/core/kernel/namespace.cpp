@@ -20,7 +20,7 @@ void initCore(QCoreApplication *app, QSettings *settings, const QString &dbConne
     if (!dbConnection.isEmpty())
         SystemusPrivate::dbConnection = dbConnection;
 
-    Orm::init();
+    //Orm::init();
     Q_UNUSED(app);
 }
 

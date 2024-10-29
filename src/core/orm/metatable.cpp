@@ -275,22 +275,24 @@ QStringList MetaTable::propertyNames() const
 
 QString MetaTable::propertyName(int index) const
 {
-    S_D(const MetaTable);
-    if (index < d->metaPropertyIndexes.size())
-        return (d->metaObject ? d->metaObject->property(d->metaPropertyIndexes.at(index)).name() : QString());
-    else
-        return QString();
+    const char *name = property(index).name();
+    return (name ? QString(name) : QString());
 }
 
 SecretProperty MetaTable::property(int index) const
 {
     S_D(const MetaTable);
-    if (index < d->metaPropertyIndexes.size())
-        return (d->metaObject ? d->metaObject->property(d->metaPropertyIndexes.at(index)) : QMetaProperty());
-    else if (index - d->metaPropertyIndexes.size() < d->secretProperties.size())
-        return d->secretProperties.at(index - d->metaPropertyIndexes.size());
-    else
-        return SecretProperty();
+
+    if (index < d->metaPropertyIndexes.size()) {
+        index = d->metaPropertyIndexes.at(index);
+        return SecretProperty(d->metaObject->property(index));
+    } else {
+        index -= d->metaPropertyIndexes.size();
+        if (index < d->secretProperties.size())
+            return d->secretProperties.at(index);
+    }
+
+    return SecretProperty();
 }
 
 int MetaTable::indexOfProperty(const QString &propertyName) const

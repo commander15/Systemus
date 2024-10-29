@@ -82,8 +82,17 @@ function(target_headers target)
     get_target_property(NAME ${target} SYSTEMUS_NAME)
     get_target_property(SYSTEM ${target} SYSTEMUS_SYSTEM)
 
-    generate_nested_headers(${CMAKE_BINARY_DIR}/include/${SYSTEM}${NAME} ${PUBLIC_HEADERS})
-    generate_nested_headers(${CMAKE_BINARY_DIR}/include/${SYSTEM}${NAME}/private ${PRIVATE_HEADERS})
+    set(INCLUDE_DIR include/${SYSTEM}${NAME})
+
+    generate_nested_headers(${CMAKE_BINARY_DIR}/${INCLUDE_DIR} ${PUBLIC_HEADERS})
+    generate_nested_headers(${CMAKE_BINARY_DIR}/${INCLUDE_DIR}/private ${PRIVATE_HEADERS})
+
+    target_include_directories(${target}
+        PUBLIC
+            $<INSTALL_INTERFACE:include>
+            $<INSTALL_INTERFACE:${INCLUDE_DIR}>
+            $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/${INCLUDE_DIR}>
+    )
 endfunction()
 
 function(generate_nested_headers destination)

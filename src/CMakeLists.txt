@@ -39,3 +39,20 @@ install(FILES SystemusConfig.cmake SystemusConfigVersion.cmake
 )
 
 install(FILES Systemus DESTINATION include)
+
+if (Systemus_BUILD_TRANSLATIONS)
+    set(TARGETS Core)
+
+    if (Systemus_BUILD_WIDGETS)
+        list(APPEND TARGETS Widgets)
+    endif()
+
+    set(TS_FILES ${Systemus_LOCALES})
+    list(TRANSFORM TS_FILES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/../translations/systemus_)
+    list(TRANSFORM TS_FILES APPEND .ts)
+    qt_add_translations(Core SOURCE_TARGETS ${TARGETS}
+        TS_FILES ${TS_FILES} QM_FILES_OUTPUT_VARIABLE QM_FILES
+    )
+
+    install(FILES ${QM_FILES} DESTINATION translations)
+endif()

@@ -28,6 +28,8 @@ public:
 
     virtual QString name() const = 0;
 
+    virtual void registerClasses();
+
     // OO Side (Remove classNameFromTableName method)
 
     QList<SecretProperty> secretPropertiesFromMetaObject(const QMetaObject *metaObject) const;

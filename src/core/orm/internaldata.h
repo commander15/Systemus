@@ -9,7 +9,7 @@
 namespace Systemus {
 
 class InternalDataPrivate;
-class SYSTEMUS_CORE_EXPORT InternalData : public Systemus::Orm::Data
+class SYSTEMUS_CORE_EXPORT InternalData : public Orm::Data
 {
     Q_GADGET
     Q_PROPERTY(int id READ id WRITE setId)
@@ -26,6 +26,9 @@ public:
 
 protected:
     InternalData(InternalDataPrivate *d);
+
+    bool isPropertyNull(const QString &name) const override;
+    QVariant readProperty(const QString &name) const override;
 };
 
 class DescriptiveDataPrivate;

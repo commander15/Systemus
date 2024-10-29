@@ -24,6 +24,11 @@ Backend::~Backend()
 {
 }
 
+void Backend::registerClasses()
+{
+    //
+}
+
 QList<SecretProperty> Backend::secretPropertiesFromMetaObject(const QMetaObject *metaObject) const
 {
     int index = metaObject->indexOfClassInfo("properties");

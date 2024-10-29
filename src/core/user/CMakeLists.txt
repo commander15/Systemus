@@ -1,10 +1,12 @@
 target_headers(Core
     PUBLIC
+        controlgate.h
         authenticator.h
         user.h
         #privilege.h
         #permission.h
     PRIVATE
+        controlgate_p.h
         authenticator_p.h
         user_p.h
         #privilege_p.h
@@ -12,6 +14,7 @@ target_headers(Core
 
 target_sources(Core
     PRIVATE
+        controlgate.cpp
         authenticator.cpp
         user.cpp
         #privilege.cpp

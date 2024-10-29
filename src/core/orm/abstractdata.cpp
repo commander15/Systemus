@@ -237,7 +237,7 @@ void AbstractData::fillWithSqlRecord(const QSqlRecord &record)
     const MetaTable table = metaTable();
     for (int i(0); i < table.count(); ++i) {
         const QString propertyName = table.propertyName(i);
-        const QString fieldName = MetaMapper::fieldName(propertyName, table);
+        const QString fieldName = table.fieldName(i);
 
         if (record.contains(fieldName))
             writeProperty(propertyName, record.value(fieldName));

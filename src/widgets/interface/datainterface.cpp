@@ -5,6 +5,7 @@
 #include <SystemusWidgets/filterwidget.h>
 #include <SystemusWidgets/dataedit.h>
 
+#include <SystemusCore/controlgate.h>
 #include <SystemusCore/data.h>
 #include <SystemusCore/datatablemodel.h>
 #include <SystemusCore/metamapper.h>
@@ -306,40 +307,43 @@ void DataInterface::setModel(Orm::DataTableModel *model)
 
 bool DataInterface::supportAction(int action) const
 {
+    QString permission;
+
     S_D(const DataInterface);
-
-    /*const User user = Authenticator::instance()->loggedUser();
-    const QByteArray id = interfaceId();
-
     switch (action) {
     case RefreshAction:
-    case SearchAction:
-        return user.hasPermission(id + ".list");
-
-    case ShowAction:
-        return user.hasPermission(id + ".read");
-
-    case AddAction:
-        return user.hasPermission(id + ".create");
-
-    case EditAction:
-        return user.hasPermission(id + ".update");
-
-    case DeleteAction:
-        return user.hasPermission(id + ".delete");
-
-    default:
-        return false;
-    }*/
-
-    switch (action) {
-    case RefreshAction:
-    case SearchAction:
-    case DeleteAction:
         return true;
 
-    default:
-        return d->editDialog;
+    case SearchAction:
+        permission = QStringLiteral("search");
+        break;
+
+    case ShowAction:
+        permission = QStringLiteral("show");
+        break;
+
+    case AddAction:
+        permission = QStringLiteral("add");
+        break;
+
+    case EditAction:
+        permission = QStringLiteral("edit");
+        break;
+
+    case DeleteAction:
+        permission = QStringLiteral("delete");
+        break;
+    }
+
+    if (!permission.isEmpty()) {
+        const auto id = interfaceId();
+        if (!id.isEmpty())
+            permission.prepend(id + '.');
+        else
+            permission.prepend("ui.");
+        return ControlGate::hasPermission(permission);
+    } else {
+        return false;
     }
 }
 

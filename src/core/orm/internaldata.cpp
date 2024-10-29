@@ -40,6 +40,24 @@ QString InternalData::defaultFilter() const
     return table.foreignFieldName() + " = " + formatValue(primaryValue());
 }
 
+bool InternalData::isPropertyNull(const QString &name) const
+{
+    S_D(const InternalData);
+    if (name == QStringLiteral("id"))
+        return (d->id == 0);
+    else
+        return Orm::Data::isPropertyNull(name);
+}
+
+QVariant InternalData::readProperty(const QString &name) const
+{
+    S_D(const InternalData);
+    if (name == QStringLiteral("id"))
+        return (d->id != 0 ? d->id : QVariant());
+    else
+        return Orm::Data::readProperty(name);
+}
+
 DescriptiveData::DescriptiveData() :
     InternalData(new DescriptiveDataPrivate)
 {
